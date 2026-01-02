@@ -27,12 +27,12 @@ import java.util.stream.Stream;
 @Accessors(chain = true)
 public final class GlslIfNode implements GlslNode {
 
-    private GlslNode expression;
+    private GlslNode condition;
     private final GlslNodeList first;
     private final GlslNodeList second;
 
-    public GlslIfNode(final GlslNode expression, final Collection<GlslNode> first, final Collection<GlslNode> second) {
-        this.expression = expression;
+    public GlslIfNode(final GlslNode condition, final Collection<GlslNode> first, final Collection<GlslNode> second) {
+        this.condition = condition;
         this.first = new GlslNodeList(first);
         this.second = new GlslNodeList(second);
     }
