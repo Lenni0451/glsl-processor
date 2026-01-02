@@ -1,5 +1,10 @@
 package io.github.ocelot.glslprocessor.api.grammar;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
@@ -10,28 +15,23 @@ import java.util.Collection;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslParameterDeclaration {
 
     private GlslSpecifiedType type;
     private String name;
 
-    public GlslParameterDeclaration(GlslType type, @Nullable String name) {
+    public GlslParameterDeclaration(final GlslType type, @Nullable final String name) {
+        this(type.asSpecifiedType(), name);
+    }
+
+    public GlslParameterDeclaration(final GlslSpecifiedType type, @Nullable final String name) {
+        this.type = type;
         this.name = name;
-        this.type = type.asSpecifiedType();
-    }
-
-    /**
-     * @return The parameter data operand
-     */
-    public GlslSpecifiedType getType() {
-        return this.type;
-    }
-
-    /**
-     * @return The name of the parameter or <code>null</code> if declared like <code>void foo(int)</code>
-     */
-    public @Nullable String getName() {
-        return this.name;
     }
 
     /**
@@ -39,18 +39,8 @@ public final class GlslParameterDeclaration {
      *
      * @param type The new operand
      */
-    public GlslParameterDeclaration setType(GlslType type) {
+    public GlslParameterDeclaration setType(final GlslType type) {
         this.type = type.asSpecifiedType();
-        return this;
-    }
-
-    /**
-     * Sets the name of this parameter.
-     *
-     * @param name The new name
-     */
-    public GlslParameterDeclaration setName(@Nullable String name) {
-        this.name = name;
         return this;
     }
 
@@ -59,7 +49,7 @@ public final class GlslParameterDeclaration {
      *
      * @param qualifiers The new qualifiers
      */
-    public GlslParameterDeclaration setQualifiers(GlslTypeQualifier... qualifiers) {
+    public GlslParameterDeclaration setQualifiers(final GlslTypeQualifier... qualifiers) {
         this.type.setQualifiers(qualifiers);
         return this;
     }
@@ -69,7 +59,7 @@ public final class GlslParameterDeclaration {
      *
      * @param qualifiers The new qualifiers
      */
-    public GlslParameterDeclaration setQualifiers(Collection<GlslTypeQualifier> qualifiers) {
+    public GlslParameterDeclaration setQualifiers(final Collection<GlslTypeQualifier> qualifiers) {
         this.type.setQualifiers(qualifiers);
         return this;
     }
@@ -81,25 +71,4 @@ public final class GlslParameterDeclaration {
         return new GlslParameterDeclaration(this.type.copy(), this.name);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslParameterDeclaration that = (GlslParameterDeclaration) o;
-        return this.name.equals(that.name) && this.type.equals(that.type);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.name.hashCode();
-        result = 31 * result + this.type.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslParameterDeclaration{type='" + this.type + "', name=" + this.name + '}';
-    }
 }

@@ -4,6 +4,8 @@ import io.github.ocelot.glslprocessor.api.grammar.GlslSpecifiedType;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.*;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.stream.Stream;
@@ -12,6 +14,11 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslAssignmentNode implements GlslNode {
 
     private GlslNode first;
@@ -30,72 +37,13 @@ public final class GlslAssignmentNode implements GlslNode {
     }
 
     @Override
-    public void visit(GlslNodeVisitor visitor) {
-        visitor.visitAssign(this);
-    }
-
-    @Override
     public GlslNodeType getNodeType() {
         return GlslNodeType.ASSIGN;
     }
 
     @Override
-    public @Nullable GlslSpecifiedType getType() {
-        return this.first.getType();
-    }
-
-    /**
-     * @return The first operand
-     */
-    public GlslNode getFirst() {
-        return this.first;
-    }
-
-    /**
-     * @return The second operand
-     */
-    public GlslNode getSecond() {
-        return this.second;
-    }
-
-    /**
-     * @return The operand to perform when setting the first to the second
-     */
-    public Operand getOperand() {
-        return this.operand;
-    }
-
-    public GlslAssignmentNode setFirst(GlslNode first) {
-        this.first = first;
-        return this;
-    }
-
-    public GlslAssignmentNode setSecond(GlslNode second) {
-        this.second = second;
-        return this;
-    }
-
-    public GlslAssignmentNode setOperand(Operand operand) {
-        this.operand = operand;
-        return this;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslAssignmentNode that = (GlslAssignmentNode) o;
-        return this.first.equals(that.first) && this.second.equals(that.second) && this.operand == that.operand;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.first.hashCode();
-        result = 31 * result + this.second.hashCode();
-        result = 31 * result + this.operand.hashCode();
-        return result;
+    public void visit(GlslNodeVisitor visitor) {
+        visitor.visitAssign(this);
     }
 
     @Override
@@ -104,13 +52,13 @@ public final class GlslAssignmentNode implements GlslNode {
     }
 
     @Override
-    public String toString() {
-        return "GlslAssignmentNode{" +
-                "first=" + this.first + ", " +
-                "second=" + this.second + ", " +
-                "operand=" + this.operand + ']';
+    public @Nullable GlslSpecifiedType getSpecifiedType() {
+        return this.first.getSpecifiedType();
     }
 
+
+    @Getter
+    @RequiredArgsConstructor
     public enum Operand {
         EQUAL("="),
         MUL_ASSIGN("*="),
@@ -125,13 +73,5 @@ public final class GlslAssignmentNode implements GlslNode {
         OR_ASSIGN("|=");
 
         private final String delimiter;
-
-        Operand(String delimiter) {
-            this.delimiter = delimiter;
-        }
-
-        public String getDelimiter() {
-            return this.delimiter;
-        }
     }
 }

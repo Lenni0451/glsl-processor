@@ -4,6 +4,8 @@ import io.github.ocelot.glslprocessor.api.grammar.GlslSpecifiedType;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.*;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.stream.Stream;
@@ -12,14 +14,24 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslUnaryNode implements GlslNode {
 
     private GlslNode expression;
     private Operand operand;
 
-    public GlslUnaryNode(GlslNode expression, Operand operand) {
+    public GlslUnaryNode(final GlslNode expression, final Operand operand) {
         this.expression = expression;
         this.operand = operand;
+    }
+
+    @Override
+    public GlslNodeType getNodeType() {
+        return GlslNodeType.UNARY;
     }
 
     @Override
@@ -28,60 +40,18 @@ public final class GlslUnaryNode implements GlslNode {
     }
 
     @Override
-    public GlslNodeType getNodeType() {
-        return GlslNodeType.UNARY;
-    }
-
-    public GlslNode getExpression() {
-        return this.expression;
-    }
-
-    public Operand getOperand() {
-        return this.operand;
-    }
-
-    public GlslUnaryNode setExpression(GlslNode expression) {
-        this.expression = expression;
-        return this;
-    }
-
-    public GlslUnaryNode setOperand(Operand operand) {
-        this.operand = operand;
-        return this;
-    }
-
-    @Override
-    public @Nullable GlslSpecifiedType getType() {
-        return this.expression.getType();
-    }
-
-    @Override
     public Stream<GlslNode> stream() {
         return Stream.concat(Stream.of(this), this.expression.stream());
     }
 
     @Override
-    public String toString() {
-        return "GlslUnaryNode{expression=" + this.expression + ", " + "operand=" + this.operand + '}';
+    public @Nullable GlslSpecifiedType getSpecifiedType() {
+        return this.expression.getSpecifiedType();
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
 
-        GlslUnaryNode that = (GlslUnaryNode) o;
-        return this.expression.equals(that.expression) && this.operand == that.operand;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.expression.hashCode();
-        result = 31 * result + this.operand.hashCode();
-        return result;
-    }
-
+    @Getter
+    @RequiredArgsConstructor
     public enum Operand {
         PRE_INCREMENT("++"),
         PRE_DECREMENT("--"),
@@ -93,13 +63,6 @@ public final class GlslUnaryNode implements GlslNode {
         TILDE("~");
 
         private final String delimiter;
-
-        Operand(String delimiter) {
-            this.delimiter = delimiter;
-        }
-
-        public String getDelimiter() {
-            return this.delimiter;
-        }
     }
+
 }

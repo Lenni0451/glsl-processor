@@ -16,4 +16,5 @@ public enum GlslInjectionPoint {
     AFTER_MAIN,
     BEFORE_FUNCTIONS,
     AFTER_FUNCTIONS
+
 }

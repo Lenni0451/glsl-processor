@@ -24,11 +24,11 @@ public class GlslLexer {
 
     private static final Pattern MULTI_COMMENT_PATTERN = Pattern.compile("/\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/");
 
-    public static Token[] createTokens(String input) throws GlslSyntaxException {
+    public static Token[] createTokens(final String input) throws GlslSyntaxException {
         return createTokens(input, null);
     }
 
-    public static Token[] createTokens(String input, @Nullable ObjIntConsumer<Token> commentConsumer) throws GlslSyntaxException {
+    public static Token[] createTokens(final String input, @Nullable final ObjIntConsumer<Token> commentConsumer) throws GlslSyntaxException {
         GlslStringReader reader = new GlslStringReader(input);
         List<Token> tokens = new ArrayList<>();
 
@@ -51,7 +51,7 @@ public class GlslLexer {
         return tokens.toArray(Token[]::new);
     }
 
-    private static @Nullable Token readToken(GlslStringReader reader) {
+    private static @Nullable Token readToken(final GlslStringReader reader) {
         int cursor = reader.cursor;
         String string = reader.string;
         char[] chars = reader.chars;
@@ -154,9 +154,10 @@ public class GlslLexer {
         return new Token(patternType, longestPattern);
     }
 
-    private static boolean isValidIdentifierChar(char c) {
+    private static boolean isValidIdentifierChar(final char c) {
         return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
     }
+
 
     public record Token(TokenType type, String value) {
         @Override
@@ -409,7 +410,7 @@ public class GlslLexer {
         private final int[] wordLengths;
         private final char[][] chars;
 
-        TokenType(String... words) {
+        TokenType(final String... words) {
             if (words.length > 0) {
                 this.wordCount = words.length;
                 this.words = words;

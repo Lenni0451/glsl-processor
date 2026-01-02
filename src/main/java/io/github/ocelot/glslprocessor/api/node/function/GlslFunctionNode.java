@@ -8,6 +8,11 @@ import io.github.ocelot.glslprocessor.api.node.GlslNodeList;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.node.GlslRootNode;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,41 +27,31 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslFunctionNode implements GlslRootNode {
 
     private GlslFunctionHeader header;
     @Nullable
     private GlslNodeList body;
 
-    public GlslFunctionNode(GlslFunctionHeader header, @Nullable Collection<GlslNode> body) {
+    public GlslFunctionNode(final GlslFunctionHeader header, @Nullable final Collection<GlslNode> body) {
         this.header = header;
         this.body = body != null ? new GlslNodeList(body) : null;
     }
 
     @Override
-    public void visit(GlslNodeVisitor visitor) {
-        if (this.body != null) {
-            for (GlslNode node : this.body) {
-                node.visit(visitor);
-            }
-        }
-    }
-
-    @Override
-    public GlslNodeType getNodeType() {
-        return GlslNodeType.FUNCTION;
-    }
-
-    /**
-     * @return The full signature of this function
-     */
-    public GlslFunctionHeader getHeader() {
-        return this.header;
-    }
-
-    @Override
     public @NotNull String getName() {
         return this.header.getName();
+    }
+
+    @Override
+    public GlslFunctionNode setName(@NotNull final String name) {
+        this.header.setName(Objects.requireNonNull(name));
+        return this;
     }
 
     /**
@@ -73,33 +68,12 @@ public final class GlslFunctionNode implements GlslRootNode {
         return this.header.getParameters();
     }
 
-    @Override
-    public @Nullable GlslNodeList getBody() {
-        return this.body;
-    }
-
-    /**
-     * Sets the function header of this function to the specified value.
-     *
-     * @param header The new header
-     */
-    public void setHeader(GlslFunctionHeader header) {
-        this.header = header;
-    }
-
-    @Override
-    public GlslFunctionNode setName(@Nullable String name) {
-        this.header.setName(Objects.requireNonNull(name));
-        return this;
-    }
-
     /**
      * Sets the body of this function or <code>null</code> to make this a function prototype.
      *
      * @param body The new function body
      */
-    @Override
-    public boolean setBody(@Nullable Collection<GlslNode> body) {
+    public boolean setBody(@Nullable final Collection<GlslNode> body) {
         if (body != null) {
             if (this.body != null) {
                 this.body.clear();
@@ -114,6 +88,20 @@ public final class GlslFunctionNode implements GlslRootNode {
     }
 
     @Override
+    public GlslNodeType getNodeType() {
+        return GlslNodeType.FUNCTION;
+    }
+
+    @Override
+    public void visit(GlslNodeVisitor visitor) {
+        if (this.body != null) {
+            for (GlslNode node : this.body) {
+                node.visit(visitor);
+            }
+        }
+    }
+
+    @Override
     public Stream<GlslNode> stream() {
         if (this.body == null) {
             return Stream.of(this);
@@ -122,25 +110,4 @@ public final class GlslFunctionNode implements GlslRootNode {
         }
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslFunctionNode that = (GlslFunctionNode) o;
-        return this.header.equals(that.header) && Objects.equals(this.body, that.body);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.header.hashCode();
-        result = 31 * result + Objects.hashCode(this.body);
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslFunction{header=" + this.header + ", body=" + this.body + '}';
-    }
 }

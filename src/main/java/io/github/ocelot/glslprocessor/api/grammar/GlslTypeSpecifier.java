@@ -1,11 +1,15 @@
 package io.github.ocelot.glslprocessor.api.grammar;
 
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Objects;
 
 /**
  * @author Ocelot
@@ -43,15 +47,15 @@ public sealed interface GlslTypeSpecifier extends GlslType permits GlslStructSpe
         return structSpecifier;
     }
 
-    static GlslTypeSpecifier named(String name) {
+    static GlslTypeSpecifier named(final String name) {
         return new Name(name);
     }
 
-    static GlslTypeSpecifier array(GlslTypeSpecifier specifier, @Nullable GlslNode size) {
+    static GlslTypeSpecifier array(final GlslTypeSpecifier specifier, @Nullable final GlslNode size) {
         return new Array(specifier, size);
     }
 
-    static GlslStructSpecifier struct(String name, Collection<GlslStructField> fields) {
+    static GlslStructSpecifier struct(final String name, final Collection<GlslStructField> fields) {
         return new GlslStructSpecifier(name, new ArrayList<>(fields));
     }
 
@@ -60,49 +64,28 @@ public sealed interface GlslTypeSpecifier extends GlslType permits GlslStructSpe
         return new GlslSpecifiedType(this);
     }
 
+
     /**
      * A {@link GlslTypeSpecifier} referring to a previously defined struct name.
      *
      * @author Ocelot
      * @since 1.0.0
      */
+    @Getter
+    @Setter
+    @ToString
+    @EqualsAndHashCode
+    @Accessors(chain = true)
     final class Name implements GlslTypeSpecifier {
-
         private String name;
 
-        Name(String name) {
+        Name(final String name) {
             this.name = name;
-        }
-
-        @Override
-        public String getName() {
-            return this.name;
         }
 
         @Override
         public boolean isNamed() {
             return true;
-        }
-
-        public Name setName(String name) {
-            this.name = name;
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (!(o instanceof Name name)) return false;
-            return this.name.equals(name.name);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.name.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return "Name[name=" + this.name + ']';
         }
     }
 
@@ -112,22 +95,18 @@ public sealed interface GlslTypeSpecifier extends GlslType permits GlslStructSpe
      * @author Ocelot
      * @since 1.0.0
      */
+    @Getter
+    @Setter
+    @ToString
+    @EqualsAndHashCode
+    @Accessors(chain = true)
     final class Array implements GlslTypeSpecifier {
-
         private GlslTypeSpecifier specifier;
         private @Nullable GlslNode size;
 
-        Array(GlslTypeSpecifier specifier, @Nullable GlslNode size) {
+        Array(final GlslTypeSpecifier specifier, @Nullable final GlslNode size) {
             this.specifier = specifier;
             this.size = size;
-        }
-
-        public GlslTypeSpecifier getSpecifier() {
-            return this.specifier;
-        }
-
-        public @Nullable GlslNode getSize() {
-            return this.size;
         }
 
         @Override
@@ -143,44 +122,6 @@ public sealed interface GlslTypeSpecifier extends GlslType permits GlslStructSpe
         @Override
         public boolean isStruct() {
             return this.specifier.isStruct();
-        }
-
-        public Array setSpecifier(GlslTypeSpecifier specifier) {
-            this.specifier = specifier;
-            return this;
-        }
-
-        public Array setSize(@Nullable GlslNode size) {
-            this.size = size;
-            return this;
-        }
-
-        @Deprecated(since = "0.2.0", forRemoval = true)
-        public GlslTypeSpecifier specifier() {
-            return this.specifier;
-        }
-
-        @Deprecated(since = "0.2.0", forRemoval = true)
-        public @Nullable GlslNode size() {
-            return this.size;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (!(o instanceof Array array)) return false;
-            return this.specifier.equals(array.specifier) && Objects.equals(this.size, array.size);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = this.specifier.hashCode();
-            result = 31 * result + Objects.hashCode(this.size);
-            return result;
-        }
-
-        @Override
-        public String toString() {
-            return "GlslTypeSpecifier.Array[specifier=" + this.specifier + ", size=" + this.size + ']';
         }
     }
 
@@ -313,11 +254,11 @@ public sealed interface GlslTypeSpecifier extends GlslType permits GlslStructSpe
 
         private final String name;
 
-        BuiltinType(String name) {
+        BuiltinType(final String name) {
             this.name = name;
         }
 
-        public String getConstant(double value) {
+        public String getConstant(final double value) {
             return switch (this) {
                 case FLOAT, VEC2, VEC3, VEC4 -> Float.toString((float) value);
                 case DOUBLE, DVEC2, DVEC3, DVEC4 -> Double.toString(value);
@@ -380,8 +321,7 @@ public sealed interface GlslTypeSpecifier extends GlslType permits GlslStructSpe
         public boolean isMatrix() {
             return switch (this) {
                 case MAT2, MAT2X2, DMAT2, DMAT2X2, MAT3, MAT3X3, DMAT3, DMAT3X3, MAT4, DMAT4, MAT4X4, DMAT4X4, MAT2X3,
-                     MAT3X2, DMAT2X3, DMAT3X2, MAT2X4, MAT4X2, DMAT2X4, DMAT4X2, MAT3X4, MAT4X3, DMAT3X4, DMAT4X3 ->
-                        true;
+                     MAT3X2, DMAT2X3, DMAT3X2, MAT2X4, MAT4X2, DMAT2X4, DMAT4X2, MAT3X4, MAT4X3, DMAT3X4, DMAT4X3 -> true;
                 default -> false;
             };
         }

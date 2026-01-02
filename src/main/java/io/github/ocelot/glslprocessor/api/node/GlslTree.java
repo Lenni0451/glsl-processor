@@ -3,7 +3,9 @@ package io.github.ocelot.glslprocessor.api.node;
 import io.github.ocelot.glslprocessor.api.grammar.GlslSpecifiedType;
 import io.github.ocelot.glslprocessor.api.grammar.GlslTypeQualifier;
 import io.github.ocelot.glslprocessor.api.grammar.GlslVersionStatement;
+import io.github.ocelot.glslprocessor.api.node.branch.GlslForLoopNode;
 import io.github.ocelot.glslprocessor.api.node.branch.GlslIfNode;
+import io.github.ocelot.glslprocessor.api.node.branch.GlslWhileLoopNode;
 import io.github.ocelot.glslprocessor.api.node.function.GlslFunctionNode;
 import io.github.ocelot.glslprocessor.api.node.variable.GlslNewFieldNode;
 import io.github.ocelot.glslprocessor.api.node.variable.GlslStructDeclarationNode;
@@ -11,6 +13,9 @@ import io.github.ocelot.glslprocessor.api.node.variable.GlslVariableDeclarationN
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
 import io.github.ocelot.glslprocessor.api.visitor.GlslTreeStringWriter;
 import io.github.ocelot.glslprocessor.api.visitor.GlslTreeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -22,6 +27,9 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class GlslTree {
 
     private final GlslVersionStatement versionStatement;
@@ -38,7 +46,7 @@ public final class GlslTree {
         this.macros = new HashMap<>();
     }
 
-    public GlslTree(GlslVersionStatement versionStatement, Collection<GlslNode> body, Collection<String> directives, Map<String, GlslNode> markers) {
+    public GlslTree(final GlslVersionStatement versionStatement, final Collection<GlslNode> body, final Collection<String> directives, final Map<String, GlslNode> markers) {
         this.versionStatement = versionStatement;
         this.body = new GlslNodeList(body);
         this.directives = new ArrayList<>(directives);
@@ -46,7 +54,7 @@ public final class GlslTree {
         this.macros = new HashMap<>();
     }
 
-    private void visit(GlslTreeVisitor visitor, GlslNode node) {
+    private void visit(final GlslTreeVisitor visitor, final GlslNode node) {
         if (node instanceof GlslFunctionNode functionNode) {
             GlslNodeVisitor functionVisitor = visitor.visitFunction(functionNode);
             if (functionVisitor != null) {
@@ -75,7 +83,7 @@ public final class GlslTree {
      *
      * @param visitor The visitor instance
      */
-    public void visit(GlslTreeVisitor visitor) {
+    public void visit(final GlslTreeVisitor visitor) {
         visitor.visitMarkers(this.markers);
         visitor.visitVersion(this.versionStatement);
         for (String directive : this.directives) {
@@ -168,7 +176,7 @@ public final class GlslTree {
         return this.body.stream().filter(node -> node instanceof GlslFunctionNode).map(node -> (GlslFunctionNode) node);
     }
 
-    public Optional<GlslNewFieldNode> field(String name) {
+    public Optional<GlslNewFieldNode> field(final String name) {
         return this.body.stream().filter(node -> node instanceof GlslNewFieldNode newNode && name.equals(newNode.getName())).findFirst().map(newNode -> (GlslNewFieldNode) newNode);
     }
 
@@ -176,16 +184,16 @@ public final class GlslTree {
         return this.body.stream().filter(node -> node instanceof GlslNewFieldNode).map(node -> (GlslNewFieldNode) node);
     }
 
-    public Stream<GlslNewFieldNode> searchField(String name) {
+    public Stream<GlslNewFieldNode> searchField(final String name) {
         return this.body.stream().flatMap(GlslNode::stream).filter(node -> node instanceof GlslNewFieldNode newNode && name.equals(newNode.getName())).map(node -> (GlslNewFieldNode) node);
     }
 
-    public Optional<GlslBlock> containingBlock(GlslNode node) {
+    public Optional<GlslBlock> containingBlock(final GlslNode node) {
         GlslBlock block = this.containingBlock(this.body, node);
         return block != null && block.body == this.body ? Optional.of(new GlslBlock(this.mainFunction().orElseThrow().getBody(), 0)) : Optional.ofNullable(block);
     }
 
-    private @Nullable GlslBlock containingBlock(GlslNodeList body, GlslNode node) {
+    private @Nullable GlslBlock containingBlock(final GlslNodeList body, final GlslNode node) {
         for (int i = 0; i < body.size(); i++) {
             GlslNode element = body.get(i);
             if (element == node) {
@@ -202,7 +210,10 @@ public final class GlslTree {
                     return secondFound;
                 }
             }
-            GlslNodeList elementBody = element.getBody();
+            GlslNodeList elementBody = null;
+            if (element instanceof GlslForLoopNode forLoopNode) elementBody = forLoopNode.getBody();
+            else if (element instanceof GlslWhileLoopNode whileLoopNode) elementBody = whileLoopNode.getBody();
+            else if (element instanceof GlslFunctionNode functionNode) elementBody = functionNode.getBody();
             if (elementBody != null) {
                 GlslBlock found = this.containingBlock(elementBody, node);
                 if (found != null) {
@@ -211,43 +222,6 @@ public final class GlslTree {
             }
         }
         return null;
-    }
-
-    /**
-     * Holds data about what block nodes are contained inside of.
-     *
-     * @param body  The body the node is inside
-     * @param index The index inside the body the node is listed
-     * @author Ocelot
-     */
-    public record GlslBlock(GlslNodeList body, int index) {
-
-        /**
-         * @return The original node
-         */
-        public GlslNode node() {
-            return this.body.get(this.index);
-        }
-    }
-
-    public GlslVersionStatement getVersionStatement() {
-        return this.versionStatement;
-    }
-
-    public List<String> getDirectives() {
-        return this.directives;
-    }
-
-    public Map<String, GlslNode> getMarkers() {
-        return this.markers;
-    }
-
-    public Map<String, String> getMacros() {
-        return this.macros;
-    }
-
-    public GlslNodeList getBody() {
-        return this.body;
     }
 
     public String toSourceString() {
@@ -261,26 +235,21 @@ public final class GlslTree {
         macros.remove("__VERSION__");
     }
 
-    @Override
-    public String toString() {
-        return "GlslTree{version=" + this.versionStatement + ", body=" + this.body + '}';
-    }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
+    /**
+     * Holds data about what block nodes are contained inside of.
+     *
+     * @param body  The body the node is inside
+     * @param index The index inside the body the node is listed
+     * @author Ocelot
+     */
+    public record GlslBlock(GlslNodeList body, int index) {
+        /**
+         * @return The original node
+         */
+        public GlslNode node() {
+            return this.body.get(this.index);
         }
-
-        GlslTree glslTree = (GlslTree) o;
-        return this.versionStatement.equals(glslTree.versionStatement) && this.body.equals(glslTree.body) && this.directives.equals(glslTree.directives);
     }
 
-    @Override
-    public int hashCode() {
-        int result = this.versionStatement.hashCode();
-        result = 31 * result + this.body.hashCode();
-        result = 31 * result + this.directives.hashCode();
-        return result;
-    }
 }

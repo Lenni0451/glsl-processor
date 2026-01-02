@@ -3,6 +3,11 @@ package io.github.ocelot.glslprocessor.api.node.branch;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.stream.Stream;
@@ -11,25 +16,18 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslReturnNode implements GlslNode {
 
+    @Nullable
     private GlslNode value;
 
-    public GlslReturnNode(@Nullable GlslNode value) {
+    public GlslReturnNode(@Nullable final GlslNode value) {
         this.value = value;
-    }
-
-    public @Nullable GlslNode getValue() {
-        return this.value;
-    }
-
-    public void setValue(@Nullable GlslNode value) {
-        this.value = value;
-    }
-
-    @Override
-    public void visit(GlslNodeVisitor visitor) {
-        visitor.visitReturn(this);
     }
 
     @Override
@@ -38,27 +36,13 @@ public final class GlslReturnNode implements GlslNode {
     }
 
     @Override
+    public void visit(GlslNodeVisitor visitor) {
+        visitor.visitReturn(this);
+    }
+
+    @Override
     public Stream<GlslNode> stream() {
         return Stream.concat(Stream.of(this), this.value.stream());
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslReturnNode that = (GlslReturnNode) o;
-        return this.value.equals(that.value);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.value.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "ReturnNode{value=" + this.value + '}';
-    }
 }

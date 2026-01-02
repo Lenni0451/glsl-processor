@@ -11,23 +11,25 @@ import org.jetbrains.annotations.Nullable;
 @ApiStatus.Experimental
 public class GlslBitwiseVisitor {
 
+    @Nullable
     private final GlslBitwiseVisitor parent;
 
     public GlslBitwiseVisitor() {
         this(null);
     }
 
-    public GlslBitwiseVisitor(@Nullable GlslBitwiseVisitor parent) {
+    public GlslBitwiseVisitor(@Nullable final GlslBitwiseVisitor parent) {
         this.parent = parent;
     }
 
-    public @Nullable GlslNodeVisitor visitNode(int index) {
+    public @Nullable GlslNodeVisitor visitNode(final int index) {
         return this.parent != null ? this.parent.visitNode(index) : null;
     }
 
-    public void visitBitwiseExpressionEnd(GlslBitwiseNode node) {
+    public void visitBitwiseExpressionEnd(final GlslBitwiseNode node) {
         if (this.parent != null) {
             this.parent.visitBitwiseExpressionEnd(node);
         }
     }
+
 }

@@ -6,6 +6,11 @@ import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.node.GlslRootNode;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.util.stream.Stream;
 
@@ -13,15 +18,48 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslStructDeclarationNode implements GlslRootNode {
 
-    private GlslSpecifiedType specifiedType;
+    private GlslSpecifiedType type;
 
-    public GlslStructDeclarationNode(GlslSpecifiedType specifiedType) {
+    public GlslStructDeclarationNode(final GlslSpecifiedType specifiedType) {
         if (!specifiedType.getSpecifier().isStruct()) {
             throw new IllegalArgumentException("specified type must be struct or array of structs");
         }
-        this.specifiedType = specifiedType;
+        this.type = specifiedType;
+    }
+
+    public GlslStructDeclarationNode setType(final GlslSpecifiedType specifiedType) {
+        if (!specifiedType.getSpecifier().isStruct()) {
+            throw new IllegalArgumentException("specified type must be struct or array of structs");
+        }
+        this.type = specifiedType;
+        return this;
+    }
+
+    public GlslStructSpecifier getStructSpecifier() {
+        return this.type.getSpecifier().asStructSpecifier();
+    }
+
+    @Override
+    public String getName() {
+        return this.type.getSpecifier().getName();
+    }
+
+    @Override
+    public GlslStructDeclarationNode setName(final String name) {
+        this.getStructSpecifier().setName(name);
+        return this;
+    }
+
+    @Override
+    public GlslNodeType getNodeType() {
+        return GlslNodeType.STRUCT_DECLARATION;
     }
 
     @Override
@@ -30,59 +68,8 @@ public final class GlslStructDeclarationNode implements GlslRootNode {
     }
 
     @Override
-    public GlslNodeType getNodeType() {
-        return GlslNodeType.STRUCT_DECLARATION;
-    }
-
-    public GlslSpecifiedType getSpecifiedType() {
-        return this.specifiedType;
-    }
-
-    public GlslStructSpecifier getStructSpecifier() {
-        return this.specifiedType.getSpecifier().asStructSpecifier();
-    }
-
-    @Override
     public Stream<GlslNode> stream() {
         return Stream.of(this);
     }
 
-    public GlslStructDeclarationNode setSpecifiedType(GlslSpecifiedType specifiedType) {
-        if (!specifiedType.getSpecifier().isStruct()) {
-            throw new IllegalArgumentException("specified type must be struct or array of structs");
-        }
-        this.specifiedType = specifiedType;
-        return this;
-    }
-
-    @Override
-    public String getName() {
-        return this.specifiedType.getSpecifier().getName();
-    }
-
-    @Override
-    public GlslStructDeclarationNode setName(String name) {
-        this.getStructSpecifier().setName(name);
-        return this;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslStructDeclarationNode that = (GlslStructDeclarationNode) o;
-        return this.specifiedType.equals(that.specifiedType);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.specifiedType.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "GlslStructNode{specifiedType=" + this.specifiedType + '}';
-    }
 }

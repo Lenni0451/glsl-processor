@@ -11,13 +11,14 @@ import org.jetbrains.annotations.Nullable;
 @ApiStatus.Experimental
 public class GlslIfVisitor {
 
+    @Nullable
     private final GlslIfVisitor parent;
 
     public GlslIfVisitor() {
         this(null);
     }
 
-    public GlslIfVisitor(@Nullable GlslIfVisitor parent) {
+    public GlslIfVisitor(@Nullable final GlslIfVisitor parent) {
         this.parent = parent;
     }
 
@@ -29,9 +30,10 @@ public class GlslIfVisitor {
         return this.parent != null ? this.parent.visitElse() : null;
     }
 
-    public void visitIfEnd(GlslIfNode node) {
+    public void visitIfEnd(final GlslIfNode node) {
         if (this.parent != null) {
             this.parent.visitIfEnd(node);
         }
     }
+
 }

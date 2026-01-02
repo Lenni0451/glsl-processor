@@ -6,31 +6,49 @@ import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.node.GlslRootNode;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslNewFieldNode implements GlslRootNode {
 
     private GlslSpecifiedType type;
     private String name;
     private GlslNode initializer;
 
-    public GlslNewFieldNode(GlslType type, @Nullable String name, @Nullable GlslNode initializer) {
-        this.type = type.asSpecifiedType();
+    public GlslNewFieldNode(final GlslType type, @Nullable final String name, @Nullable final GlslNode initializer) {
+        this(type.asSpecifiedType(), name, initializer);
+    }
+
+    public GlslNewFieldNode(final GlslSpecifiedType type, @Nullable final String name, @Nullable final GlslNode initializer) {
+        this.type = type;
         this.name = name;
         this.initializer = initializer;
     }
 
     @Override
-    public void visit(GlslNodeVisitor visitor) {
-        visitor.visitNewField(this);
+    public @Nullable String getName() {
+        return this.name;
+    }
+
+    public GlslNewFieldNode setType(final GlslType type) {
+        this.type = type.asSpecifiedType();
+        return this;
     }
 
     @Override
@@ -39,8 +57,8 @@ public final class GlslNewFieldNode implements GlslRootNode {
     }
 
     @Override
-    public @NotNull GlslSpecifiedType getType() {
-        return this.type;
+    public void visit(GlslNodeVisitor visitor) {
+        visitor.visitNewField(this);
     }
 
     @Override
@@ -49,50 +67,8 @@ public final class GlslNewFieldNode implements GlslRootNode {
     }
 
     @Override
-    public @Nullable String getName() {
-        return this.name;
+    public @NotNull GlslSpecifiedType getSpecifiedType() {
+        return this.type;
     }
 
-    public @Nullable GlslNode getInitializer() {
-        return this.initializer;
-    }
-
-    public GlslNewFieldNode setType(GlslType type) {
-        this.type = type.asSpecifiedType();
-        return this;
-    }
-
-    @Override
-    public GlslNewFieldNode setName(@Nullable String name) {
-        this.name = name;
-        return this;
-    }
-
-    public GlslNewFieldNode setInitializer(@Nullable GlslNode initializer) {
-        this.initializer = initializer;
-        return this;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslNewNode{operand=" + this.type + ", name='" + this.name + "', initializer=" + this.initializer + '}';
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslNewFieldNode that = (GlslNewFieldNode) o;
-        return this.type.equals(that.type) && this.name.equals(that.name) && Objects.equals(this.initializer, that.initializer);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.type.hashCode();
-        result = 31 * result + this.name.hashCode();
-        result = 31 * result + Objects.hashCode(this.initializer);
-        return result;
-    }
 }

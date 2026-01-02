@@ -4,6 +4,11 @@ import io.github.ocelot.glslprocessor.api.grammar.GlslTypeSpecifier;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.util.stream.Stream;
 
@@ -11,25 +16,17 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslPrimitiveConstructorNode implements GlslNode {
 
     private GlslTypeSpecifier primitiveType;
 
-    public GlslPrimitiveConstructorNode(GlslTypeSpecifier primitiveType) {
+    public GlslPrimitiveConstructorNode(final GlslTypeSpecifier primitiveType) {
         this.primitiveType = primitiveType;
-    }
-
-    public GlslTypeSpecifier getPrimitiveType() {
-        return this.primitiveType;
-    }
-
-    public void setPrimitiveType(GlslTypeSpecifier primitiveType) {
-        this.primitiveType = primitiveType;
-    }
-
-    @Override
-    public void visit(GlslNodeVisitor visitor) {
-        visitor.visitPrimitiveConstructor(this);
     }
 
     @Override
@@ -38,27 +35,13 @@ public final class GlslPrimitiveConstructorNode implements GlslNode {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslPrimitiveConstructorNode that = (GlslPrimitiveConstructorNode) o;
-        return this.primitiveType.equals(that.primitiveType);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.primitiveType.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "PrimitiveConstructorNode{operand=" + this.primitiveType + '}';
+    public void visit(GlslNodeVisitor visitor) {
+        visitor.visitPrimitiveConstructor(this);
     }
 
     @Override
     public Stream<GlslNode> stream() {
         return Stream.of(this);
     }
+
 }

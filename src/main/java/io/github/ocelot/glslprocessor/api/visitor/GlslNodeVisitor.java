@@ -16,13 +16,14 @@ import org.jetbrains.annotations.Nullable;
 @ApiStatus.Experimental
 public class GlslNodeVisitor {
 
+    @Nullable
     private final GlslNodeVisitor parent;
 
     public GlslNodeVisitor() {
         this(null);
     }
 
-    public GlslNodeVisitor(@Nullable GlslNodeVisitor parent) {
+    public GlslNodeVisitor(@Nullable final GlslNodeVisitor parent) {
         this.parent = parent;
     }
 
@@ -32,7 +33,7 @@ public class GlslNodeVisitor {
      * @param node The node to visit
      * @return A visitor for the body or <code>null</code> to skip
      */
-    public @Nullable GlslNodeVisitor visitForLoop(GlslForLoopNode node) {
+    public @Nullable GlslNodeVisitor visitForLoop(final GlslForLoopNode node) {
         return this.parent != null ? this.parent.visitForLoop(node) : null;
     }
 
@@ -41,7 +42,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitForLoopEnd(GlslForLoopNode node) {
+    public void visitForLoopEnd(final GlslForLoopNode node) {
         if (this.parent != null) {
             this.parent.visitForLoopEnd(node);
         }
@@ -53,7 +54,7 @@ public class GlslNodeVisitor {
      * @param node The node to visit
      * @return A visitor for the body or <code>null</code> to skip
      */
-    public @Nullable GlslNodeVisitor visitWhileLoop(GlslWhileLoopNode node) {
+    public @Nullable GlslNodeVisitor visitWhileLoop(final GlslWhileLoopNode node) {
         return this.parent != null ? this.parent.visitWhileLoop(node) : null;
     }
 
@@ -62,7 +63,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitWhileLoopEnd(GlslWhileLoopNode node) {
+    public void visitWhileLoopEnd(final GlslWhileLoopNode node) {
         if (this.parent != null) {
             this.parent.visitWhileLoopEnd(node);
         }
@@ -73,7 +74,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitJump(GlslJumpNode node) {
+    public void visitJump(final GlslJumpNode node) {
         if (this.parent != null) {
             this.parent.visitJump(node);
         }
@@ -84,7 +85,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitReturn(GlslReturnNode node) {
+    public void visitReturn(final GlslReturnNode node) {
         if (this.parent != null) {
             this.parent.visitReturn(node);
         }
@@ -96,7 +97,7 @@ public class GlslNodeVisitor {
      * @param node The node to visit
      * @return A visitor for the body or <code>null</code> to skip
      */
-    public @Nullable GlslIfVisitor visitIf(GlslIfNode node) {
+    public @Nullable GlslIfVisitor visitIf(final GlslIfNode node) {
         return this.parent != null ? this.parent.visitIf(node) : null;
     }
 
@@ -106,7 +107,7 @@ public class GlslNodeVisitor {
      * @param node The node to visit
      * @return A visitor for the body or <code>null</code> to skip
      */
-    public @Nullable GlslSwitchVisitor visitSwitch(GlslSwitchNode node) {
+    public @Nullable GlslSwitchVisitor visitSwitch(final GlslSwitchNode node) {
         return this.parent != null ? this.parent.visitSwitch(node) : null;
     }
 
@@ -116,7 +117,7 @@ public class GlslNodeVisitor {
      * @param node The node to visit
      * @return A visitor for the body or <code>null</code> to skip
      */
-    public @Nullable GlslBitwiseVisitor visitBitwise(GlslBitwiseNode node) {
+    public @Nullable GlslBitwiseVisitor visitBitwise(final GlslBitwiseNode node) {
         return this.parent != null ? this.parent.visitBitwise(node) : null;
     }
 
@@ -125,7 +126,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitAssign(GlslAssignmentNode node) {
+    public void visitAssign(final GlslAssignmentNode node) {
         if (this.parent != null) {
             this.parent.visitAssign(node);
         }
@@ -136,7 +137,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitOperation(GlslOperationNode node) {
+    public void visitOperation(final GlslOperationNode node) {
         if (this.parent != null) {
             this.parent.visitOperation(node);
         }
@@ -147,7 +148,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitCompare(GlslCompareNode node) {
+    public void visitCompare(final GlslCompareNode node) {
         if (this.parent != null) {
             this.parent.visitCompare(node);
         }
@@ -158,7 +159,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitCondition(GlslConditionalNode node) {
+    public void visitCondition(final GlslConditionalNode node) {
         if (this.parent != null) {
             this.parent.visitCondition(node);
         }
@@ -169,7 +170,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitPrecision(GlslPrecisionNode node) {
+    public void visitPrecision(final GlslPrecisionNode node) {
         if (this.parent != null) {
             this.parent.visitPrecision(node);
         }
@@ -180,7 +181,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitUnary(GlslUnaryNode node) {
+    public void visitUnary(final GlslUnaryNode node) {
         if (this.parent != null) {
             this.parent.visitUnary(node);
         }
@@ -192,7 +193,7 @@ public class GlslNodeVisitor {
      * @param node The node to visit
      * @return A visitor for the name and parameters or <code>null</code> to skip
      */
-    public @Nullable GlslInvokeVisitor visitFunctionInvocation(GlslInvokeFunctionNode node) {
+    public @Nullable GlslInvokeVisitor visitFunctionInvocation(final GlslInvokeFunctionNode node) {
         return this.parent != null ? this.parent.visitFunctionInvocation(node) : null;
     }
 
@@ -201,7 +202,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitPrimitiveConstructor(GlslPrimitiveConstructorNode node) {
+    public void visitPrimitiveConstructor(final GlslPrimitiveConstructorNode node) {
         if (this.parent != null) {
             this.parent.visitPrimitiveConstructor(node);
         }
@@ -212,7 +213,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitConstant(GlslConstantNode node) {
+    public void visitConstant(final GlslConstantNode node) {
         if (this.parent != null) {
             this.parent.visitConstant(node);
         }
@@ -223,7 +224,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitVariableDeclaration(GlslVariableDeclarationNode node) {
+    public void visitVariableDeclaration(final GlslVariableDeclarationNode node) {
         if (this.parent != null) {
             this.parent.visitVariableDeclaration(node);
         }
@@ -234,7 +235,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitGetArray(GlslGetArrayNode node) {
+    public void visitGetArray(final GlslGetArrayNode node) {
         if (this.parent != null) {
             this.parent.visitGetArray(node);
         }
@@ -245,7 +246,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitGetField(GlslGetFieldNode node) {
+    public void visitGetField(final GlslGetFieldNode node) {
         if (this.parent != null) {
             this.parent.visitGetField(node);
         }
@@ -256,7 +257,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitNewField(GlslNewFieldNode node) {
+    public void visitNewField(final GlslNewFieldNode node) {
         if (this.parent != null) {
             this.parent.visitNewField(node);
         }
@@ -267,7 +268,7 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitStructDeclaration(GlslStructDeclarationNode node) {
+    public void visitStructDeclaration(final GlslStructDeclarationNode node) {
         if (this.parent != null) {
             this.parent.visitStructDeclaration(node);
         }
@@ -278,9 +279,10 @@ public class GlslNodeVisitor {
      *
      * @param node The node to visit
      */
-    public void visitVariable(GlslVariableNode node) {
+    public void visitVariable(final GlslVariableNode node) {
         if (this.parent != null) {
             this.parent.visitVariable(node);
         }
     }
+
 }

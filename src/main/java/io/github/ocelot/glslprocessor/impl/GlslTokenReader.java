@@ -2,6 +2,7 @@ package io.github.ocelot.glslprocessor.impl;
 
 import io.github.ocelot.glslprocessor.api.GlslSyntaxException;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
+import lombok.ToString;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 
@@ -13,6 +14,7 @@ import java.util.stream.IntStream;
 /**
  * @author Ocelot
  */
+@ToString
 @ApiStatus.Internal
 public class GlslTokenReader {
 
@@ -26,7 +28,7 @@ public class GlslTokenReader {
     private final List<GlslSyntaxException> errors;
     private final List<GlslSyntaxException> errorsView;
 
-    public GlslTokenReader(String source) throws GlslSyntaxException {
+    public GlslTokenReader(final String source) throws GlslSyntaxException {
         this.markers = new HashMap<>();
         this.markedNodes = new HashMap<>();
         this.tokens = GlslLexer.createTokens(source, (comment, index) -> {
@@ -46,7 +48,7 @@ public class GlslTokenReader {
         this.errorsView = Collections.unmodifiableList(this.errors);
     }
 
-    public GlslTokenReader(GlslLexer.Token[] tokens) {
+    public GlslTokenReader(final GlslLexer.Token[] tokens) {
         this.markers = Collections.emptyMap();
         this.markedNodes = new HashMap<>();
         this.tokens = tokens;
@@ -56,7 +58,7 @@ public class GlslTokenReader {
         this.errorsView = Collections.unmodifiableList(this.errors);
     }
 
-    private static String calculateString(int length, GlslLexer.Token[] tokens) {
+    private static String calculateString(final int length, final GlslLexer.Token[] tokens) {
         StringBuilder builder = new StringBuilder(length);
         for (GlslLexer.Token token : tokens) {
             builder.append(token.value());
@@ -64,7 +66,7 @@ public class GlslTokenReader {
         return builder.toString().trim();
     }
 
-    public int getCursorOffset(int cursor) {
+    public int getCursorOffset(final int cursor) {
         int offset = 0;
         for (int i = 0; i <= Math.min(cursor, this.tokens.length - 1); i++) {
             offset += this.tokens[i].value().length();
@@ -72,7 +74,7 @@ public class GlslTokenReader {
         return offset;
     }
 
-    public boolean canRead(int length) {
+    public boolean canRead(final int length) {
         return this.cursor + length <= this.tokens.length;
     }
 
@@ -84,19 +86,19 @@ public class GlslTokenReader {
         return this.peek(0);
     }
 
-    public GlslLexer.Token peek(int amount) {
+    public GlslLexer.Token peek(final int amount) {
         return this.cursor + amount < this.tokens.length ? this.tokens[this.cursor + amount] : null;
     }
 
-    public GlslLexer.TokenType peekType(int amount) {
+    public GlslLexer.TokenType peekType(final int amount) {
         return this.cursor + amount < this.tokens.length ? this.tokens[this.cursor + amount].type() : null;
     }
 
-    public boolean canConsume(GlslLexer.TokenType token) {
+    public boolean canConsume(final GlslLexer.TokenType token) {
         return this.canRead() && this.peek().type() == token;
     }
 
-    public GlslLexer.Token consume(GlslLexer.TokenType token) throws GlslSyntaxException {
+    public GlslLexer.Token consume(final GlslLexer.TokenType token) throws GlslSyntaxException {
         if (!this.canRead() || this.peek().type() != token) {
             throw this.error("Expected " + token);
         }
@@ -104,7 +106,7 @@ public class GlslTokenReader {
         return this.peek(-1);
     }
 
-    public boolean tryConsume(GlslLexer.TokenType... tokens) {
+    public boolean tryConsume(final GlslLexer.TokenType... tokens) {
         if (!this.canRead(tokens.length)) {
             return false;
         }
@@ -118,7 +120,7 @@ public class GlslTokenReader {
         return true;
     }
 
-    public GlslSyntaxException error(String error) {
+    public GlslSyntaxException error(final String error) {
         return new GlslSyntaxException(error, this.tokenString, this.getCursorOffset(this.cursor));
     }
 
@@ -158,11 +160,11 @@ public class GlslTokenReader {
         this.cursor++;
     }
 
-    public void skip(int amount) {
+    public void skip(final int amount) {
         this.cursor += amount;
     }
 
-    public void markError(String message) {
+    public void markError(final String message) {
         for (GlslSyntaxException error : this.errors) {
             if (error.getCursor() == this.cursor && error.getRawMessage().equals(message)) {
                 return;
@@ -171,7 +173,7 @@ public class GlslTokenReader {
         this.errors.add(new GlslSyntaxException(message, this.tokenString, this.cursor));
     }
 
-    public void markNode(int cursor, GlslNode node) {
+    public void markNode(final int cursor, final GlslNode node) {
         for (Map.Entry<String, Integer> entry : this.markers.entrySet()) {
             if (entry.getValue() == cursor) {
                 this.markedNodes.put(entry.getKey(), node);
@@ -194,15 +196,12 @@ public class GlslTokenReader {
         return this.markedNodes;
     }
 
-    public void setCursor(int cursor) {
+    public void setCursor(final int cursor) {
         this.cursor = cursor;
     }
 
-    @Override
-    public String toString() {
-        return "GlslTokenReader{cursor=" + this.cursor + ", token=" + this.peek() + "}";
-    }
 
     public record Error(int position, String message) {
     }
+
 }

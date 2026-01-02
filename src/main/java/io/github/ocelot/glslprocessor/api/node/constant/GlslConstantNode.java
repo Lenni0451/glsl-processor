@@ -1,7 +1,6 @@
 package io.github.ocelot.glslprocessor.api.node.constant;
 
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
-import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
 
 import java.util.stream.Stream;
@@ -34,9 +33,9 @@ public interface GlslConstantNode extends GlslNode {
 
     boolean isNumber();
 
-    void set(Number value);
+    void set(final Number value);
 
-    void set(boolean value);
+    void set(final boolean value);
 
     @Override
     default void visit(GlslNodeVisitor visitor) {
@@ -47,4 +46,5 @@ public interface GlslConstantNode extends GlslNode {
     default Stream<GlslNode> stream() {
         return Stream.of(this);
     }
+
 }

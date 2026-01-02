@@ -14,7 +14,7 @@ public interface GlslRootNode extends GlslNode {
 
     @Nullable String getName();
 
-    GlslRootNode setName(@Nullable String name);
+    GlslRootNode setName(@Nullable final String name);
 
     default boolean isDeclaration() {
         return this instanceof GlslVariableDeclarationNode;
@@ -59,4 +59,5 @@ public interface GlslRootNode extends GlslNode {
         }
         throw new IllegalStateException("This node is not a GlslStructNode");
     }
+
 }

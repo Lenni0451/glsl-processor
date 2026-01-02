@@ -5,6 +5,11 @@ import io.github.ocelot.glslprocessor.api.node.GlslNodeList;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslIfVisitor;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.util.Collection;
 import java.util.stream.Stream;
@@ -15,44 +20,38 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslIfNode implements GlslNode {
 
     private GlslNode expression;
     private final GlslNodeList first;
     private final GlslNodeList second;
 
-    public GlslIfNode(GlslNode expression, Collection<GlslNode> first, Collection<GlslNode> second) {
+    public GlslIfNode(final GlslNode expression, final Collection<GlslNode> first, final Collection<GlslNode> second) {
         this.expression = expression;
         this.first = new GlslNodeList(first);
         this.second = new GlslNodeList(second);
     }
 
-    public GlslNode getExpression() {
-        return this.expression;
-    }
-
-    public GlslNodeList getFirst() {
-        return this.first;
-    }
-
-    public GlslNodeList getSecond() {
-        return this.second;
-    }
-
-    public void setExpression(GlslNode expression) {
-        this.expression = expression;
-    }
-
-    public GlslIfNode setFirst(Collection<GlslNode> first) {
+    public GlslIfNode setFirst(final Collection<GlslNode> first) {
         this.first.clear();
         this.first.addAll(first);
         return this;
     }
 
-    public GlslIfNode setSecond(Collection<GlslNode> first) {
+    public GlslIfNode setSecond(final Collection<GlslNode> first) {
         this.first.clear();
         this.first.addAll(first);
         return this;
+    }
+
+    @Override
+    public GlslNodeType getNodeType() {
+        return GlslNodeType.IF_ELSE;
     }
 
     @Override
@@ -82,38 +81,8 @@ public final class GlslIfNode implements GlslNode {
     }
 
     @Override
-    public GlslNodeType getNodeType() {
-        return GlslNodeType.IF_ELSE;
-    }
-
-    @Override
     public Stream<GlslNode> stream() {
         return Stream.concat(Stream.of(this), Stream.concat(this.first.stream().flatMap(GlslNode::stream), this.second.stream().flatMap(GlslNode::stream)));
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslIfNode that = (GlslIfNode) o;
-        return this.expression.equals(that.expression) && this.first.equals(that.first) && this.second.equals(that.second);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.expression.hashCode();
-        result = 31 * result + this.first.hashCode();
-        result = 31 * result + this.second.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslIfNode{" +
-                "expression=" + this.expression + ", " +
-                "first=" + this.first + ", " +
-                "branch=" + this.second + '}';
-    }
 }

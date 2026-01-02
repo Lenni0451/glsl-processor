@@ -1,13 +1,19 @@
 package io.github.ocelot.glslprocessor.api.node;
 
 import io.github.ocelot.glslprocessor.api.grammar.GlslSpecifiedType;
-import io.github.ocelot.glslprocessor.api.node.constant.*;
+import io.github.ocelot.glslprocessor.api.node.constant.GlslBoolConstantNode;
+import io.github.ocelot.glslprocessor.api.node.constant.GlslDoubleConstantNode;
+import io.github.ocelot.glslprocessor.api.node.constant.GlslFloatConstantNode;
+import io.github.ocelot.glslprocessor.api.node.constant.GlslIntConstantNode;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeStringWriter;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -19,99 +25,27 @@ import java.util.stream.Stream;
 @ApiStatus.NonExtendable
 public interface GlslNode {
 
-    /**
-     * @return This node represented as a string
-     * @see GlslNodeStringWriter
-     */
-    default String toSourceString() {
-        GlslNodeStringWriter visitor = new GlslNodeStringWriter(true);
-        this.visit(visitor);
-        visitor.trimSemicolon();
-        return visitor.toString();
+    static GlslIntConstantNode intConstant(final int value) {
+        return new GlslIntConstantNode(GlslIntConstantNode.Format.DECIMAL, true, value);
     }
 
-    /**
-     * Visits this node.
-     *
-     * @param visitor The visitor visiting this node
-     */
-    void visit(GlslNodeVisitor visitor);
-
-    /**
-     * @return The type of node this class represents
-     */
-    GlslNodeType getNodeType();
-
-    /**
-     * @return The type of this node if it is a field
-     */
-    default @Nullable GlslSpecifiedType getType() {
-        return null;
+    static GlslIntConstantNode unsignedIntConstant(final int value) {
+        return new GlslIntConstantNode(GlslIntConstantNode.Format.DECIMAL, false, value);
     }
 
-    /**
-     * @return A new list with the child contents of this node
-     */
-    default List<GlslNode> toList() {
-        return new ArrayList<>(Collections.singleton(this));
-    }
-
-    /**
-     * @return The body of this node or <code>null</code> if there is no sub-body in this node
-     */
-    default @Nullable GlslNodeList getBody() {
-        return null;
-    }
-
-    /**
-     * Sets the body of this node.
-     *
-     * @param body The new body
-     * @return Whether the action was successful
-     */
-    default boolean setBody(Collection<GlslNode> body) {
-        GlslNodeList nodes = this.getBody();
-        if (nodes != null) {
-            nodes.clear();
-            nodes.addAll(body);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Sets the body of this node.
-     *
-     * @param body The new body
-     * @return Whether the action was successful
-     */
-    default boolean setBody(GlslNode... body) {
-        return this.setBody(Arrays.asList(body));
-    }
-
-    Stream<GlslNode> stream();
-
-    static GlslIntConstantNode intConstant(int value) {
-        return new GlslIntConstantNode(GlslIntFormat.DECIMAL, true, value);
-    }
-
-    static GlslIntConstantNode unsignedIntConstant(int value) {
-        return new GlslIntConstantNode(GlslIntFormat.DECIMAL, false, value);
-    }
-
-    static GlslFloatConstantNode floatConstant(float value) {
+    static GlslFloatConstantNode floatConstant(final float value) {
         return new GlslFloatConstantNode(value);
     }
 
-    static GlslDoubleConstantNode doubleConstant(double value) {
+    static GlslDoubleConstantNode doubleConstant(final double value) {
         return new GlslDoubleConstantNode(value);
     }
 
-    static GlslBoolConstantNode booleanConstant(boolean value) {
+    static GlslBoolConstantNode booleanConstant(final boolean value) {
         return new GlslBoolConstantNode(value);
     }
 
-    static GlslNode compound(Collection<GlslNode> nodes) {
+    static GlslNode compound(final Collection<GlslNode> nodes) {
         if (nodes.isEmpty()) {
             return GlslEmptyNode.INSTANCE;
         }
@@ -130,7 +64,7 @@ public interface GlslNode {
         return new GlslCompoundNode(list);
     }
 
-    static GlslNode compound(GlslNode... nodes) {
+    static GlslNode compound(final GlslNode... nodes) {
         if (nodes.length == 0) {
             return GlslEmptyNode.INSTANCE;
         }
@@ -139,4 +73,35 @@ public interface GlslNode {
         }
         return new GlslCompoundNode(new ArrayList<>(Arrays.asList(nodes)));
     }
+
+
+    /**
+     * @return The type of node this class represents
+     */
+    GlslNodeType getNodeType();
+
+    /**
+     * Visits this node.
+     *
+     * @param visitor The visitor visiting this node
+     */
+    void visit(GlslNodeVisitor visitor);
+
+    Stream<GlslNode> stream();
+
+    default @Nullable GlslSpecifiedType getSpecifiedType() {
+        return null;
+    }
+
+    /**
+     * @return This node represented as a string
+     * @see GlslNodeStringWriter
+     */
+    default String toSourceString() {
+        GlslNodeStringWriter visitor = new GlslNodeStringWriter(true);
+        this.visit(visitor);
+        visitor.trimSemicolon();
+        return visitor.toString();
+    }
+
 }

@@ -12,13 +12,14 @@ import org.jetbrains.annotations.Nullable;
 @ApiStatus.Experimental
 public class GlslSwitchVisitor {
 
+    @Nullable
     private final GlslSwitchVisitor parent;
 
     public GlslSwitchVisitor() {
         this(null);
     }
 
-    public GlslSwitchVisitor(@Nullable GlslSwitchVisitor parent) {
+    public GlslSwitchVisitor(@Nullable final GlslSwitchVisitor parent) {
         this.parent = parent;
     }
 
@@ -28,13 +29,14 @@ public class GlslSwitchVisitor {
      * @param node The node to visit
      * @return A visitor for the body or <code>null</code> to skip
      */
-    public @Nullable GlslNodeVisitor visitLabel(GlslCaseLabelNode node) {
+    public @Nullable GlslNodeVisitor visitLabel(final GlslCaseLabelNode node) {
         return this.parent != null ? this.parent.visitLabel(node) : null;
     }
 
-    public void visitSwitchEnd(GlslSwitchNode node) {
+    public void visitSwitchEnd(final GlslSwitchNode node) {
         if (this.parent != null) {
             this.parent.visitSwitchEnd(node);
         }
     }
+
 }

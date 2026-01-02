@@ -1,11 +1,22 @@
 package io.github.ocelot.glslprocessor.api.grammar;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+
 /**
  * Represents the version statement for a GLSL shader source.
  *
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslVersionStatement {
 
     private int version;
@@ -15,23 +26,9 @@ public final class GlslVersionStatement {
         this(110, true);
     }
 
-    public GlslVersionStatement(int version, boolean core) {
+    public GlslVersionStatement(final int version, final boolean core) {
         this.version = version;
         this.core = core;
-    }
-
-    /**
-     * @return The GLSL version number
-     */
-    public int getVersion() {
-        return this.version;
-    }
-
-    /**
-     * @return Whether to use the core or compatibility profile
-     */
-    public boolean isCore() {
-        return this.core;
     }
 
     /**
@@ -41,44 +38,4 @@ public final class GlslVersionStatement {
         return this.version + (this.core ? " core" : "");
     }
 
-    /**
-     * Sets the GLSL version integer.
-     *
-     * @param version The new version
-     */
-    public void setVersion(int version) {
-        this.version = version;
-    }
-
-    /**
-     * Sets whether to use the core or compatibility profile.
-     *
-     * @param core Whether to use "core"
-     */
-    public void setCore(boolean core) {
-        this.core = core;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslVersionStatement that = (GlslVersionStatement) o;
-        return this.version == that.version && this.core == that.core;
-    }
-
-    @Override
-    public int hashCode() {
-        return 31 * this.version + Boolean.hashCode(this.core);
-    }
-
-    @Override
-    public String toString() {
-        return "GlslVersion{" + this.getVersionStatement() + '}';
-    }
 }

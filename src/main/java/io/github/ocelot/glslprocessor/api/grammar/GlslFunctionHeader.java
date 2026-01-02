@@ -1,5 +1,11 @@
 package io.github.ocelot.glslprocessor.api.grammar;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -11,40 +17,28 @@ import java.util.List;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslFunctionHeader {
 
     private String name;
     private GlslSpecifiedType returnType;
     private final List<GlslParameterDeclaration> parameters;
 
-    public GlslFunctionHeader(String name, GlslType returnType, Collection<GlslParameterDeclaration> parameters) {
+    public GlslFunctionHeader(final String name, final GlslType returnType, final Collection<GlslParameterDeclaration> parameters) {
         this(name, returnType, new ArrayList<>(parameters));
     }
 
-    private GlslFunctionHeader(String name, GlslType returnType, List<GlslParameterDeclaration> parameters) {
+    private GlslFunctionHeader(final String name, final GlslType returnType, final List<GlslParameterDeclaration> parameters) {
         this.name = name;
         this.returnType = returnType.asSpecifiedType();
         this.parameters = parameters;
     }
 
-    public String getName() {
-        return this.name;
-    }
-
-    public GlslSpecifiedType getReturnType() {
-        return this.returnType;
-    }
-
-    public List<GlslParameterDeclaration> getParameters() {
-        return this.parameters;
-    }
-
-    public GlslFunctionHeader setName(String name) {
-        this.name = name;
-        return this;
-    }
-
-    public GlslFunctionHeader setReturnType(GlslType returnType) {
+    public GlslFunctionHeader setReturnType(final GlslType returnType) {
         this.returnType = returnType.asSpecifiedType();
         return this;
     }
@@ -54,7 +48,7 @@ public final class GlslFunctionHeader {
      *
      * @param parameters The new parameters to use
      */
-    public GlslFunctionHeader setParameters(GlslParameterDeclaration... parameters) {
+    public GlslFunctionHeader setParameters(final GlslParameterDeclaration... parameters) {
         return this.setParameters(Arrays.asList(parameters));
     }
 
@@ -63,7 +57,7 @@ public final class GlslFunctionHeader {
      *
      * @param parameters The new parameters to use
      */
-    public GlslFunctionHeader setParameters(Collection<GlslParameterDeclaration> parameters) {
+    public GlslFunctionHeader setParameters(final Collection<GlslParameterDeclaration> parameters) {
         this.parameters.clear();
         this.parameters.addAll(parameters);
         return this;
@@ -80,26 +74,4 @@ public final class GlslFunctionHeader {
         return new GlslFunctionHeader(this.name, this.returnType, declarations);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslFunctionHeader that = (GlslFunctionHeader) o;
-        return this.name.equals(that.name) && this.returnType.equals(that.returnType) && this.parameters.equals(that.parameters);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.name.hashCode();
-        result = 31 * result + this.returnType.hashCode();
-        result = 31 * result + this.parameters.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslFunctionHeader{name='" + this.name + "', returnType=" + this.returnType + ", parameters=" + this.parameters + '}';
-    }
 }

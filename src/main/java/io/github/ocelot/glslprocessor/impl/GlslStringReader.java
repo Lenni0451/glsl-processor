@@ -12,7 +12,7 @@ class GlslStringReader {
     public final char[] chars;
     public int cursor;
 
-    public GlslStringReader(String string) {
+    public GlslStringReader(final String string) {
         this.string = string;
         this.chars = string.toCharArray();
     }
@@ -21,7 +21,7 @@ class GlslStringReader {
         return this.cursor < this.chars.length;
     }
 
-    public void skip(int amount) {
+    public void skip(final int amount) {
         this.cursor += amount;
     }
 
@@ -34,4 +34,5 @@ class GlslStringReader {
             this.skip();
         }
     }
+
 }

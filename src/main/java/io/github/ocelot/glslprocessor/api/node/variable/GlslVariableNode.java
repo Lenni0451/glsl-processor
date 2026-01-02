@@ -3,6 +3,11 @@ package io.github.ocelot.glslprocessor.api.node.variable;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.util.stream.Stream;
 
@@ -10,12 +15,22 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslVariableNode implements GlslNode {
 
     private String name;
 
-    public GlslVariableNode(String name) {
+    public GlslVariableNode(final String name) {
         this.name = name;
+    }
+
+    @Override
+    public GlslNodeType getNodeType() {
+        return GlslNodeType.VARIABLE;
     }
 
     @Override
@@ -24,41 +39,8 @@ public final class GlslVariableNode implements GlslNode {
     }
 
     @Override
-    public GlslNodeType getNodeType() {
-        return GlslNodeType.VARIABLE;
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
-    public GlslVariableNode setName(String name) {
-        this.name = name;
-        return this;
-    }
-
-    @Override
     public Stream<GlslNode> stream() {
         return Stream.of(this);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslVariableNode that = (GlslVariableNode) o;
-        return this.name.equals(that.name);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.name.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return "GlslVariableNode{name=" + this.name + '}';
-    }
 }

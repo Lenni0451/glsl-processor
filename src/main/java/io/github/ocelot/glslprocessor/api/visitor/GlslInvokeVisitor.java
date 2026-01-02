@@ -11,13 +11,14 @@ import org.jetbrains.annotations.Nullable;
 @ApiStatus.Experimental
 public class GlslInvokeVisitor {
 
+    @Nullable
     private final GlslInvokeVisitor parent;
 
     public GlslInvokeVisitor() {
         this(null);
     }
 
-    public GlslInvokeVisitor(@Nullable GlslInvokeVisitor parent) {
+    public GlslInvokeVisitor(@Nullable final GlslInvokeVisitor parent) {
         this.parent = parent;
     }
 
@@ -36,7 +37,7 @@ public class GlslInvokeVisitor {
      * @param index The index of the parameter to visit
      * @return A visitor for the header or <code>null</code> to skip
      */
-    public @Nullable GlslNodeVisitor visitParameter(int index) {
+    public @Nullable GlslNodeVisitor visitParameter(final int index) {
         return this.parent != null ? this.parent.visitParameter(index) : null;
     }
 
@@ -50,4 +51,5 @@ public class GlslInvokeVisitor {
             this.parent.visitInvokeEnd(node);
         }
     }
+
 }

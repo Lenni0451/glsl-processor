@@ -3,6 +3,11 @@ package io.github.ocelot.glslprocessor.api.node.variable;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.util.stream.Stream;
 
@@ -10,14 +15,24 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslGetArrayNode implements GlslNode {
 
     private GlslNode expression;
     private GlslNode index;
 
-    public GlslGetArrayNode(GlslNode expression, GlslNode index) {
+    public GlslGetArrayNode(final GlslNode expression, final GlslNode index) {
         this.expression = expression;
         this.index = index;
+    }
+
+    @Override
+    public GlslNodeType getNodeType() {
+        return GlslNodeType.GET_ARRAY;
     }
 
     @Override
@@ -26,52 +41,8 @@ public final class GlslGetArrayNode implements GlslNode {
     }
 
     @Override
-    public GlslNodeType getNodeType() {
-        return GlslNodeType.GET_ARRAY;
-    }
-
-    public GlslNode getExpression() {
-        return this.expression;
-    }
-
-    public GlslNode getIndex() {
-        return this.index;
-    }
-
-    public GlslGetArrayNode setExpression(GlslNode expression) {
-        this.expression = expression;
-        return this;
-    }
-
-    public GlslGetArrayNode setIndex(GlslNode index) {
-        this.index = index;
-        return this;
-    }
-
-    @Override
     public Stream<GlslNode> stream() {
         return Stream.concat(Stream.of(this), Stream.concat(this.expression.stream(), this.index.stream()));
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslGetArrayNode that = (GlslGetArrayNode) o;
-        return this.expression.equals(that.expression) && this.index.equals(that.index);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.expression.hashCode();
-        result = 31 * result + this.index.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslArrayNode{expression=" + this.expression + ", index=" + this.index + '}';
-    }
 }

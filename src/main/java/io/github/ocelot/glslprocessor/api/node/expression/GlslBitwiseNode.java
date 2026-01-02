@@ -4,6 +4,8 @@ import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslBitwiseVisitor;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
+import lombok.*;
+import lombok.experimental.Accessors;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,15 +17,12 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslBitwiseNode implements GlslNode {
-
-    private final List<GlslNode> expressions;
-    private Operand operand;
-
-    public GlslBitwiseNode(Collection<GlslNode> expressions, Operand operand) {
-        this.expressions = new ArrayList<>(expressions);
-        this.operand = operand;
-    }
 
     public static GlslBitwiseNode bitAnd(Collection<GlslNode> expressions) {
         return new GlslBitwiseNode(expressions, Operand.BITWISE_AND);
@@ -49,19 +48,20 @@ public final class GlslBitwiseNode implements GlslNode {
         return new GlslBitwiseNode(expressions, Operand.LOGICAL_EXCLUSIVE_OR);
     }
 
-    public List<GlslNode> getExpressions() {
-        return this.expressions;
+
+    private final List<GlslNode> expressions;
+    private Operand operand;
+
+    public GlslBitwiseNode(final Collection<GlslNode> expressions, final Operand operand) {
+        this.expressions = new ArrayList<>(expressions);
+        this.operand = operand;
     }
 
-    public Operand getOperand() {
-        return this.operand;
-    }
-
-    public GlslBitwiseNode setExpressions(GlslNode... expressions) {
+    public GlslBitwiseNode setExpressions(final GlslNode... expressions) {
         return this.setExpressions(Arrays.asList(expressions));
     }
 
-    public GlslBitwiseNode setExpressions(Collection<GlslNode> expressions) {
+    public GlslBitwiseNode setExpressions(final Collection<GlslNode> expressions) {
         this.expressions.clear();
         this.expressions.addAll(expressions);
         return this;
@@ -70,6 +70,11 @@ public final class GlslBitwiseNode implements GlslNode {
     public GlslBitwiseNode setOperand(Operand operand) {
         this.operand = operand;
         return this;
+    }
+
+    @Override
+    public GlslNodeType getNodeType() {
+        return this.operand.getNodeType();
     }
 
     @Override
@@ -89,33 +94,13 @@ public final class GlslBitwiseNode implements GlslNode {
     }
 
     @Override
-    public GlslNodeType getNodeType() {
-        return this.operand.getNodeType();
-    }
-
-    @Override
     public Stream<GlslNode> stream() {
         return Stream.concat(Stream.of(this), this.getExpressions().stream().flatMap(GlslNode::stream));
     }
 
-    @Override
-    public final boolean equals(Object o) {
-        if (!(o instanceof GlslBitwiseNode that)) return false;
-        return this.expressions.equals(that.expressions) && this.operand == that.operand;
-    }
 
-    @Override
-    public int hashCode() {
-        int result = this.expressions.hashCode();
-        result = 31 * result + this.operand.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslBitwiseNode{expressions=" + this.expressions + ", operator=" + this.operand + '}';
-    }
-
+    @Getter
+    @RequiredArgsConstructor
     public enum Operand {
         BITWISE_AND("&", GlslNodeType.AND),
         BITWISE_INCLUSIVE_OR("|", GlslNodeType.OR),
@@ -126,18 +111,6 @@ public final class GlslBitwiseNode implements GlslNode {
 
         private final String delimiter;
         private final GlslNodeType nodeType;
-
-        Operand(String delimiter, GlslNodeType nodeType) {
-            this.delimiter = delimiter;
-            this.nodeType = nodeType;
-        }
-
-        public String getDelimiter() {
-            return this.delimiter;
-        }
-
-        public GlslNodeType getNodeType() {
-            return this.nodeType;
-        }
     }
+
 }

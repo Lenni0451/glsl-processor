@@ -11,19 +11,16 @@ import java.util.stream.Stream;
  * @since 1.0.0
  */
 public enum GlslJumpNode implements GlslNode {
+
     CONTINUE(GlslNodeType.CONTINUE),
     BREAK(GlslNodeType.BREAK),
     DISCARD(GlslNodeType.DISCARD);
 
+
     private final GlslNodeType nodeType;
 
-    GlslJumpNode(GlslNodeType nodeType) {
+    GlslJumpNode(final GlslNodeType nodeType) {
         this.nodeType = nodeType;
-    }
-
-    @Override
-    public void visit(GlslNodeVisitor visitor) {
-        visitor.visitJump(this);
     }
 
     @Override
@@ -32,7 +29,13 @@ public enum GlslJumpNode implements GlslNode {
     }
 
     @Override
+    public void visit(GlslNodeVisitor visitor) {
+        visitor.visitJump(this);
+    }
+
+    @Override
     public Stream<GlslNode> stream() {
         return Stream.of(this);
     }
+
 }

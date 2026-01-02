@@ -30,7 +30,7 @@ public final class GlslTreeStringWriter extends GlslTreeVisitor {
         this.value = "";
     }
 
-    private String formatExpression(GlslNode node) {
+    private String formatExpression(final GlslNode node) {
         this.visitor.clear();
         node.visit(this.visitor);
         return this.visitor.toString();
@@ -112,4 +112,5 @@ public final class GlslTreeStringWriter extends GlslTreeVisitor {
     public String toString() {
         return this.value;
     }
+
 }

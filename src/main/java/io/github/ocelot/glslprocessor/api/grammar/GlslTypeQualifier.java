@@ -13,7 +13,7 @@ import java.util.*;
  */
 public sealed interface GlslTypeQualifier {
 
-    static GlslTypeQualifier storage(String... typeNames) {
+    static GlslTypeQualifier storage(final String... typeNames) {
         return new StorageSubroutine(typeNames);
     }
 
@@ -23,7 +23,7 @@ public sealed interface GlslTypeQualifier {
      * @param ids The ids to hold in the layout
      * @return A new layout
      */
-    static Layout layout(LayoutId... ids) {
+    static Layout layout(final LayoutId... ids) {
         return layout(Arrays.asList(ids));
     }
 
@@ -33,7 +33,7 @@ public sealed interface GlslTypeQualifier {
      * @param ids The ids to hold in the layout
      * @return A new layout
      */
-    static Layout layout(Collection<LayoutId> ids) {
+    static Layout layout(final Collection<LayoutId> ids) {
         return new Layout(List.copyOf(ids));
     }
 
@@ -44,7 +44,7 @@ public sealed interface GlslTypeQualifier {
      * @param constantExpression The optional expression to assign it to or <code>null</code>
      * @return A new layout id
      */
-    static LayoutId layoutId(String identifier, @Nullable GlslNode constantExpression) {
+    static LayoutId layoutId(final String identifier, @Nullable final GlslNode constantExpression) {
         if (identifier.equals("shared")) {
             return LayoutId.SHARED;
         }
@@ -58,10 +58,6 @@ public sealed interface GlslTypeQualifier {
      * @author Ocelot
      */
     record StorageSubroutine(String[] typeNames) implements GlslTypeQualifier {
-        @Override
-        public String toString() {
-            return "Storage[operand=SUBROUTINE, typeNames=" + Arrays.toString(this.typeNames) + "]";
-        }
     }
 
     /**
@@ -78,7 +74,7 @@ public sealed interface GlslTypeQualifier {
          * @param constantExpression The optional expression to assign it to or <code>null</code>
          * @return A new type qualifier with the added id
          */
-        public GlslTypeQualifier addLayoutId(String identifier, @Nullable GlslNode constantExpression) {
+        public GlslTypeQualifier addLayoutId(final String identifier, @Nullable final GlslNode constantExpression) {
             return this.addLayoutIds(layoutId(identifier, constantExpression));
         }
 
@@ -88,7 +84,7 @@ public sealed interface GlslTypeQualifier {
          * @param newIds The new ids to add
          * @return A new type qualifier with the added ids
          */
-        public GlslTypeQualifier addLayoutIds(LayoutId... newIds) {
+        public GlslTypeQualifier addLayoutIds(final LayoutId... newIds) {
             return this.addLayoutIds(Arrays.asList(newIds));
         }
 
@@ -98,7 +94,7 @@ public sealed interface GlslTypeQualifier {
          * @param newIds The new ids to add
          * @return A new type qualifier with the added ids
          */
-        public GlslTypeQualifier addLayoutIds(Collection<LayoutId> newIds) {
+        public GlslTypeQualifier addLayoutIds(final Collection<LayoutId> newIds) {
             List<LayoutId> layoutIds = new ArrayList<>(this.layoutIds.size() + newIds.size());
             layoutIds.addAll(this.layoutIds);
             layoutIds.addAll(newIds);
@@ -121,7 +117,7 @@ public sealed interface GlslTypeQualifier {
         /**
          * @return Whether this layout id is shared
          */
-        public boolean shared() {
+        public boolean isShared() {
             return "shared".equals(this.identifier);
         }
     }
@@ -163,4 +159,5 @@ public sealed interface GlslTypeQualifier {
     enum Precise implements GlslTypeQualifier {
         PRECISE
     }
+
 }

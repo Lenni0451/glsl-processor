@@ -5,6 +5,7 @@ package io.github.ocelot.glslprocessor.api.node;
  * @since 1.0.0
  */
 public enum GlslNodeType {
+
     FOR_LOOP,
     WHILE_LOOP,
     CONTINUE,
@@ -121,4 +122,5 @@ public enum GlslNodeType {
      * Variable Reference (can be get, set, unary, etc based on what node is used): {@code variableName}, etc
      */
     VARIABLE
+
 }

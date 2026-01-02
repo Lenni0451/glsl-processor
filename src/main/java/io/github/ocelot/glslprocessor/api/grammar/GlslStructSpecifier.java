@@ -1,5 +1,11 @@
 package io.github.ocelot.glslprocessor.api.grammar;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -9,32 +15,23 @@ import java.util.List;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslStructSpecifier implements GlslTypeSpecifier {
 
     private String name;
     private final List<GlslStructField> fields;
 
-    GlslStructSpecifier(String name, Collection<GlslStructField> fields) {
+    GlslStructSpecifier(final String name, final Collection<GlslStructField> fields) {
         this(name, new ArrayList<>(fields));
     }
 
-    private GlslStructSpecifier(String name, List<GlslStructField> fields) {
+    private GlslStructSpecifier(final String name, final List<GlslStructField> fields) {
         this.name = name;
         this.fields = fields;
-    }
-
-    @Override
-    public String getName() {
-        return this.name;
-    }
-
-    public List<GlslStructField> getFields() {
-        return this.fields;
-    }
-
-    public GlslStructSpecifier setName(String name) {
-        this.name = name;
-        return this;
     }
 
     /**
@@ -42,7 +39,7 @@ public final class GlslStructSpecifier implements GlslTypeSpecifier {
      *
      * @param fields The new fields to use
      */
-    public GlslStructSpecifier setFields(GlslStructField... fields) {
+    public GlslStructSpecifier setFields(final GlslStructField... fields) {
         return this.setFields(Arrays.asList(fields));
     }
 
@@ -51,7 +48,7 @@ public final class GlslStructSpecifier implements GlslTypeSpecifier {
      *
      * @param fields The new fields to use
      */
-    public GlslStructSpecifier setFields(Collection<GlslStructField> fields) {
+    public GlslStructSpecifier setFields(final Collection<GlslStructField> fields) {
         this.fields.clear();
         this.fields.addAll(fields);
         return this;
@@ -73,25 +70,4 @@ public final class GlslStructSpecifier implements GlslTypeSpecifier {
         return true;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslStructSpecifier that = (GlslStructSpecifier) o;
-        return this.name.equals(that.name) && this.fields.equals(that.fields);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.name.hashCode();
-        result = 31 * result + this.fields.hashCode();
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "GlslStructSpecifier{name='" + this.name + "', fields=" + this.fields + '}';
-    }
 }

@@ -25,11 +25,11 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
     private final StringBuilder builder;
     private final boolean forceInline;
 
-    public GlslNodeStringWriter(boolean inline) {
+    public GlslNodeStringWriter(final boolean inline) {
         this("", "", new StringBuilder(), inline);
     }
 
-    private GlslNodeStringWriter(String base, String prefix, StringBuilder builder, boolean forceInline) {
+    private GlslNodeStringWriter(final String base, final String prefix, final StringBuilder builder, final boolean forceInline) {
         this.base = base;
         this.prefix = prefix;
         this.builder = builder;
@@ -46,7 +46,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         return new GlslNodeStringWriter("", "", this.builder, true);
     }
 
-    private void accept(CharSequence text, boolean inline, boolean semicolon) {
+    private void accept(final CharSequence text, final boolean inline, final boolean semicolon) {
         this.builder.append(text);
         if (semicolon) {
             this.builder.append(';');
@@ -66,7 +66,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         this.builder.append(this.base).append(this.forceInline ? "}" : "}\n");
     }
 
-    private void visitTypeQualifier(GlslTypeQualifier qualifier) {
+    private void visitTypeQualifier(final GlslTypeQualifier qualifier) {
         if (qualifier instanceof GlslTypeQualifier.StorageSubroutine storageSubroutine) {
             String[] typeNames = storageSubroutine.typeNames();
             if (typeNames.length > 0) {
@@ -102,7 +102,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         }
     }
 
-    private void visitArraySuffix(GlslTypeSpecifier specifier) {
+    private void visitArraySuffix(final GlslTypeSpecifier specifier) {
         if (specifier instanceof GlslTypeSpecifier.Array array) {
             GlslNode size = array.getSize();
             if (size != null) {
@@ -122,7 +122,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         }
     }
 
-    public void visitTypeSpecifier(GlslTypeSpecifier typeSpecifier) {
+    public void visitTypeSpecifier(final GlslTypeSpecifier typeSpecifier) {
         if (!typeSpecifier.isStruct()) {
             this.builder.append(typeSpecifier.getName());
             return;
@@ -143,7 +143,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         this.accept("}", true, false);
     }
 
-    public void visitSpecifiedType(GlslSpecifiedType type) {
+    public void visitSpecifiedType(final GlslSpecifiedType type) {
         GlslTypeSpecifier specifier = type.getSpecifier();
         boolean block = false;
         for (GlslTypeQualifier qualifier : type.getQualifiers()) {
@@ -160,7 +160,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         this.visitTypeSpecifier(specifier);
     }
 
-    public void visitFunctionHeader(GlslFunctionHeader header) {
+    public void visitFunctionHeader(final GlslFunctionHeader header) {
         GlslSpecifiedType returnType = header.getReturnType();
         this.visitSpecifiedType(returnType);
         this.visitArraySuffix(returnType.getSpecifier());
@@ -447,7 +447,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         }
     }
 
-    public GlslNodeVisitor visitFunctionDeclaration(GlslFunctionNode node) {
+    public GlslNodeVisitor visitFunctionDeclaration(final GlslFunctionNode node) {
         this.visitFunctionHeader(node.getHeader());
         this.accept(" {", false, false);
         if (node.getBody() == null) {
@@ -457,7 +457,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         return this.indent();
     }
 
-    public void visitFunctionDeclarationEnd(GlslFunctionNode node) {
+    public void visitFunctionDeclarationEnd(final GlslFunctionNode node) {
         this.acceptClosing();
     }
 
@@ -507,12 +507,12 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
             this.accept(Boolean.toString(node.booleanValue()), false, false);
         } else if (node instanceof GlslIntConstantNode constantNode) {
             int value = node.intValue();
-            switch (constantNode.format()) {
+            switch (constantNode.getFormat()) {
                 case HEXADECIMAL -> this.builder.append("0x%X".formatted(value));
                 case OCTAL -> this.builder.append(value > 0 ? "0" : "").append(Integer.toOctalString(value));
                 case DECIMAL -> this.builder.append(value);
             }
-            if (!constantNode.signed()) {
+            if (!constantNode.isSigned()) {
                 this.builder.append('u');
             }
         }
@@ -577,7 +577,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
     @Override
     public void visitStructDeclaration(GlslStructDeclarationNode node) {
         this.addIndent();
-        this.visitSpecifiedType(node.getSpecifiedType());
+        this.visitSpecifiedType(node.getType());
         this.accept("", false, true);
     }
 
@@ -592,4 +592,5 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         this.builder.trimToSize();
         return this.builder.toString();
     }
+
 }

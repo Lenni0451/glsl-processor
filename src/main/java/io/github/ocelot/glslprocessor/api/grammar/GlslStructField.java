@@ -1,37 +1,34 @@
 package io.github.ocelot.glslprocessor.api.grammar;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
+
 /**
  * Represents a single field inside a struct.
  *
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslStructField {
 
     private GlslSpecifiedType type;
     private String name;
 
-    public GlslStructField(GlslType type, String name) {
+    public GlslStructField(final GlslType type, final String name) {
+        this(type.asSpecifiedType(), name);
+    }
+
+    public GlslStructField(final GlslSpecifiedType type, final String name) {
         this.type = type.asSpecifiedType();
         this.name = name;
-    }
-
-    public GlslSpecifiedType getType() {
-        return this.type;
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
-    public GlslStructField setType(GlslSpecifiedType type) {
-        this.type = type;
-        return this;
-    }
-
-    public GlslStructField setName(String name) {
-        this.name = name;
-        return this;
     }
 
     /**
@@ -41,20 +38,4 @@ public final class GlslStructField {
         return new GlslStructField(this.type.copy(), this.name);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || this.getClass() != o.getClass()) {
-            return false;
-        }
-
-        GlslStructField that = (GlslStructField) o;
-        return this.type.equals(that.type) && this.name.equals(that.name);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = this.type.hashCode();
-        result = 31 * result + this.name.hashCode();
-        return result;
-    }
 }

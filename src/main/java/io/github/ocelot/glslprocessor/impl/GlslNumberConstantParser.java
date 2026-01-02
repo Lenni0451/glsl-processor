@@ -14,7 +14,7 @@ class GlslNumberConstantParser {
     private GlslNumberConstantParser() {
     }
 
-    public static @Nullable GlslLexer.Token parseNumberConstant(GlslStringReader reader) {
+    public static @Nullable GlslLexer.Token parseNumberConstant(final GlslStringReader reader) {
         if (!reader.canRead()) {
             return null;
         }
@@ -25,7 +25,7 @@ class GlslNumberConstantParser {
         return parseIntegerConstant(reader);
     }
 
-    private static @Nullable GlslLexer.Token parseFloatingConstant(GlslStringReader reader) {
+    private static @Nullable GlslLexer.Token parseFloatingConstant(final GlslStringReader reader) {
         // digit-sequence . digit-sequence exponent-partopt floating-suffixopt
         // digit-sequence . exponent-partopt floating-suffixopt
         // . digit-sequence exponent-partopt floating-suffixopt
@@ -56,7 +56,7 @@ class GlslNumberConstantParser {
         return null;
     }
 
-    private static @Nullable StringBuilder parseFractionalConstant(GlslStringReader reader) {
+    private static @Nullable StringBuilder parseFractionalConstant(final GlslStringReader reader) {
         int cursor = reader.cursor;
         StringBuilder first = parseDigitSequence(reader);
         if (reader.chars[reader.cursor] != '.') {
@@ -80,7 +80,7 @@ class GlslNumberConstantParser {
         }
     }
 
-    private static @Nullable StringBuilder parseDigitSequence(GlslStringReader reader) {
+    private static @Nullable StringBuilder parseDigitSequence(final GlslStringReader reader) {
         int i = reader.cursor;
         char[] chars = reader.chars;
 
@@ -100,7 +100,7 @@ class GlslNumberConstantParser {
         return sequence;
     }
 
-    private static @Nullable String parseExponentPart(GlslStringReader reader) {
+    private static @Nullable String parseExponentPart(final GlslStringReader reader) {
         int cursor = reader.cursor;
         char[] chars = reader.chars;
         if (chars[cursor] != 'e' && chars[cursor] != 'E') {
@@ -133,7 +133,7 @@ class GlslNumberConstantParser {
         return "e" + digitSequence;
     }
 
-    private static GlslLexer.TokenType getFloatingType(GlslStringReader reader) {
+    private static GlslLexer.TokenType getFloatingType(final GlslStringReader reader) {
         if (!reader.canRead()) {
             return GlslLexer.TokenType.FLOATING_CONSTANT;
         }
@@ -158,7 +158,7 @@ class GlslNumberConstantParser {
         return GlslLexer.TokenType.FLOATING_CONSTANT;
     }
 
-    private static @Nullable GlslLexer.Token parseIntegerConstant(GlslStringReader reader) {
+    private static @Nullable GlslLexer.Token parseIntegerConstant(final GlslStringReader reader) {
         // decimal-constant integer-suffixopt
         // octal-constant integer-suffixopt
         // hexadecimal-constant integer-suffixopt
@@ -214,7 +214,7 @@ class GlslNumberConstantParser {
         return new GlslLexer.Token(type, numberBuilder.toString());
     }
 
-    private static void consumeDigits(GlslStringReader reader, StringBuilder builder, char end) {
+    private static void consumeDigits(final GlslStringReader reader, final StringBuilder builder, final char end) {
         char[] chars = reader.chars;
         int cursor = reader.cursor;
         while (cursor < chars.length && (chars[cursor] >= '0' && chars[cursor] <= end)) {
@@ -223,4 +223,5 @@ class GlslNumberConstantParser {
         }
         reader.cursor = cursor;
     }
+
 }

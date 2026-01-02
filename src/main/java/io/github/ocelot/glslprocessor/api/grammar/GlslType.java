@@ -12,4 +12,5 @@ public sealed interface GlslType permits GlslSpecifiedType, GlslTypeSpecifier {
      * @return This type represented as a specified type
      */
     GlslSpecifiedType asSpecifiedType();
+
 }

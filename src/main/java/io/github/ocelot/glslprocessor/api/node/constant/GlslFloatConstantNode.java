@@ -1,18 +1,28 @@
 package io.github.ocelot.glslprocessor.api.node.constant;
 
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 import org.jetbrains.annotations.ApiStatus;
 
 /**
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
+@ToString
+@EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslFloatConstantNode implements GlslConstantNode {
 
     private float value;
 
     @ApiStatus.Internal
-    public GlslFloatConstantNode(float value) {
+    public GlslFloatConstantNode(final float value) {
         this.value = value;
     }
 
@@ -37,18 +47,13 @@ public final class GlslFloatConstantNode implements GlslConstantNode {
     }
 
     @Override
-    public void set(Number value) {
+    public void set(final Number value) {
         this.value = value.floatValue();
     }
 
     @Override
-    public void set(boolean value) {
+    public void set(final boolean value) {
         this.value = value ? 1 : 0;
-    }
-
-    @Override
-    public String toString() {
-        return Float.toString(this.value);
     }
 
     @Override
@@ -56,14 +61,4 @@ public final class GlslFloatConstantNode implements GlslConstantNode {
         return GlslNodeType.FLOAT_CONSTANT;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof GlslFloatConstantNode that)) return false;
-        return Float.compare(this.value, that.value) == 0;
-    }
-
-    @Override
-    public int hashCode() {
-        return Float.hashCode(this.value);
-    }
 }
