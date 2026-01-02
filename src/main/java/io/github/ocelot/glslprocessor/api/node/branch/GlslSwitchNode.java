@@ -1,14 +1,13 @@
 package io.github.ocelot.glslprocessor.api.node.branch;
 
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
+import io.github.ocelot.glslprocessor.api.node.GlslNodeList;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
 import io.github.ocelot.glslprocessor.api.visitor.GlslSwitchVisitor;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -20,11 +19,11 @@ import java.util.stream.Stream;
 public final class GlslSwitchNode implements GlslNode {
 
     private GlslNode condition;
-    private final List<GlslNode> branches;
+    private final GlslNodeList branches;
 
     public GlslSwitchNode(GlslNode condition, Collection<GlslNode> branches) {
         this.condition = condition;
-        this.branches = new ArrayList<>(branches);
+        this.branches = new GlslNodeList(branches);
     }
 
     /**
@@ -37,7 +36,7 @@ public final class GlslSwitchNode implements GlslNode {
     /**
      * @return All code inside the switch, including all labels and code under those labels
      */
-    public List<GlslNode> getBranches() {
+    public GlslNodeList getBranches() {
         return this.branches;
     }
 

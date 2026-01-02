@@ -14,10 +14,18 @@ import java.util.stream.Stream;
  */
 public final class GlslCompoundNode implements GlslNode {
 
-    final List<GlslNode> children;
+    private final GlslNodeList children;
 
-    public GlslCompoundNode(List<GlslNode> children) {
+    public GlslCompoundNode(Collection<GlslNode> children) {
+        this.children = new GlslNodeList(children);
+    }
+
+    public GlslCompoundNode(GlslNodeList children) {
         this.children = children;
+    }
+
+    public GlslNodeList getChildren() {
+        return this.children;
     }
 
     @Override

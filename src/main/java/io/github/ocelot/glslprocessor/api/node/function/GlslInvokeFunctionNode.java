@@ -1,13 +1,12 @@
 package io.github.ocelot.glslprocessor.api.node.function;
 
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
+import io.github.ocelot.glslprocessor.api.node.GlslNodeList;
 import io.github.ocelot.glslprocessor.api.node.GlslNodeType;
 import io.github.ocelot.glslprocessor.api.visitor.GlslInvokeVisitor;
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -17,11 +16,11 @@ import java.util.stream.Stream;
 public final class GlslInvokeFunctionNode implements GlslNode {
 
     private GlslNode header;
-    private final List<GlslNode> parameters;
+    private final GlslNodeList parameters;
 
     public GlslInvokeFunctionNode(GlslNode header, Collection<GlslNode> parameters) {
         this.header = header;
-        this.parameters = new ArrayList<>(parameters);
+        this.parameters = new GlslNodeList(parameters);
     }
 
     @Override
@@ -48,7 +47,7 @@ public final class GlslInvokeFunctionNode implements GlslNode {
         return this.header;
     }
 
-    public List<GlslNode> getParameters() {
+    public GlslNodeList getParameters() {
         return this.parameters;
     }
 

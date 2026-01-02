@@ -91,7 +91,7 @@ public final class GlslTree {
             }
             // Unwrap compound nodes
             if (node instanceof GlslCompoundNode compoundNode) {
-                for (GlslNode child : compoundNode.children) {
+                for (GlslNode child : compoundNode.getChildren()) {
                     this.visit(visitor, child);
                 }
                 continue;

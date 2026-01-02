@@ -125,7 +125,7 @@ public interface GlslNode {
                 list.addAll(nodes);
                 break;
             }
-            list.addAll(compoundNode.children);
+            list.addAll(compoundNode.getChildren());
         }
         return new GlslCompoundNode(list);
     }
