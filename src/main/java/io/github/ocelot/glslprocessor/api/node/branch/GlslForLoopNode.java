@@ -11,6 +11,7 @@ import lombok.ToString;
 import lombok.experimental.Accessors;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Stream;
 
@@ -37,6 +38,16 @@ public final class GlslForLoopNode implements GlslNode {
         this.condition = condition;
         this.increment = increment;
         this.body = new GlslNodeList(body);
+    }
+
+    public GlslForLoopNode setBody(final GlslNode... body) {
+        return this.setBody(Arrays.asList(body));
+    }
+
+    public GlslForLoopNode setBody(final Collection<GlslNode> body) {
+        this.body.clear();
+        this.body.addAll(body);
+        return this;
     }
 
     @Override
