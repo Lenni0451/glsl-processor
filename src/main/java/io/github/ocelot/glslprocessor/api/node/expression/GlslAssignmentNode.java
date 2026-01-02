@@ -52,8 +52,8 @@ public final class GlslAssignmentNode implements GlslNode {
     }
 
     @Override
-    public @Nullable GlslSpecifiedType getSpecifiedType() {
-        return this.first.getSpecifiedType();
+    public @Nullable GlslSpecifiedType getSpecifiedTypeInternal() {
+        return this.first.getSpecifiedTypeInternal();
     }
 
 
@@ -74,4 +74,5 @@ public final class GlslAssignmentNode implements GlslNode {
 
         private final String delimiter;
     }
+
 }

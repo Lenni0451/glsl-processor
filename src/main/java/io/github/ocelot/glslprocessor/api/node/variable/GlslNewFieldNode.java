@@ -67,7 +67,7 @@ public final class GlslNewFieldNode implements GlslRootNode {
     }
 
     @Override
-    public @NotNull GlslSpecifiedType getSpecifiedType() {
+    public @NotNull GlslSpecifiedType getSpecifiedTypeInternal() {
         return this.type;
     }
 

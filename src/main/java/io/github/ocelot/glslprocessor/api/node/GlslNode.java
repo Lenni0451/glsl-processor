@@ -89,7 +89,8 @@ public interface GlslNode {
 
     Stream<GlslNode> stream();
 
-    default @Nullable GlslSpecifiedType getSpecifiedType() {
+    @ApiStatus.Internal
+    default @Nullable GlslSpecifiedType getSpecifiedTypeInternal() {
         return null;
     }
 

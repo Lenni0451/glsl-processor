@@ -45,8 +45,8 @@ public final class GlslUnaryNode implements GlslNode {
     }
 
     @Override
-    public @Nullable GlslSpecifiedType getSpecifiedType() {
-        return this.expression.getSpecifiedType();
+    public @Nullable GlslSpecifiedType getSpecifiedTypeInternal() {
+        return this.expression.getSpecifiedTypeInternal();
     }
 
 

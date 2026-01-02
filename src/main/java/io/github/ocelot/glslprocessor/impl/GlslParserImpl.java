@@ -1074,7 +1074,7 @@ public class GlslParserImpl {
             }
 
             if (fullySpecifiedType == null) {
-                fullySpecifiedType = singleDeclaration.getSpecifiedType();
+                fullySpecifiedType = singleDeclaration.getSpecifiedTypeInternal();
                 if (fullySpecifiedType == null) {
                     reader.setCursor(cursor);
                     break;
