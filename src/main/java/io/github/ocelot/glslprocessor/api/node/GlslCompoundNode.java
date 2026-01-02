@@ -2,7 +2,10 @@ package io.github.ocelot.glslprocessor.api.node;
 
 import io.github.ocelot.glslprocessor.api.visitor.GlslNodeVisitor;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -12,18 +15,17 @@ import java.util.stream.Stream;
  * @author Ocelot
  * @since 1.0.0
  */
+@Getter
+@Setter
 @ToString
 @EqualsAndHashCode
+@Accessors(chain = true)
 public final class GlslCompoundNode implements GlslNode {
 
     private final GlslNodeList children;
 
     public GlslCompoundNode(final Collection<GlslNode> children) {
         this.children = new GlslNodeList(children);
-    }
-
-    public GlslNodeList getChildren() {
-        return this.children;
     }
 
     public GlslCompoundNode setChildren(final GlslNode... children) {
