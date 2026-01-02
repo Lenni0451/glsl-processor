@@ -416,4 +416,12 @@ public class GlslTest {
                     vec2 pcssDiskOffset[max(6, 4)];
                 };""");
     }
+
+    @Test
+    void testPrototypeMethod() throws GlslSyntaxException {
+        testSpeed("""
+                void test();
+                """);
+    }
+
 }

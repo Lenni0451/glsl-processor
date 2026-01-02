@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 public final class GlslFunctionNode implements GlslRootNode {
 
     private GlslFunctionHeader header;
+    @Nullable
     private GlslNodeList body;
 
     public GlslFunctionNode(GlslFunctionHeader header, @Nullable Collection<GlslNode> body) {
@@ -34,8 +35,10 @@ public final class GlslFunctionNode implements GlslRootNode {
 
     @Override
     public void visit(GlslNodeVisitor visitor) {
-        for (GlslNode node : this.body) {
-            node.visit(visitor);
+        if (this.body != null) {
+            for (GlslNode node : this.body) {
+                node.visit(visitor);
+            }
         }
     }
 
@@ -112,7 +115,11 @@ public final class GlslFunctionNode implements GlslRootNode {
 
     @Override
     public Stream<GlslNode> stream() {
-        return Stream.concat(Stream.of(this), this.body.stream().flatMap(GlslNode::stream));
+        if (this.body == null) {
+            return Stream.of(this);
+        } else {
+            return Stream.concat(Stream.of(this), this.body.stream().flatMap(GlslNode::stream));
+        }
     }
 
     @Override
