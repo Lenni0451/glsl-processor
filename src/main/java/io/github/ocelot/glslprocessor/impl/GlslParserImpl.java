@@ -726,21 +726,23 @@ public class GlslParserImpl {
     }
 
     public static @Nullable GlslNode parseAssignmentExpression(final GlslTokenReader reader) {
-        // unary_expression assignment_operator assignment_expression
-        int cursor = reader.getCursor();
-        GlslNode unaryExpression = parseUnaryExpression(reader);
+        GlslNode expression = parseConditionalExpression(reader);
+        if (expression == null) {
+            return null;
+        }
+
+        // Check if the next token is an assignment operator
         if (reader.canRead()) {
             GlslAssignmentNode.Operand assignmentOperator = reader.peek().type().asAssignmentOperator();
             if (assignmentOperator != null) {
+                // If valid, consume the operator and parse the Right-Hand Side
                 reader.skip();
                 GlslNode right = parseAssignmentExpression(reader);
-                return new GlslAssignmentNode(unaryExpression, right, assignmentOperator);
+                return new GlslAssignmentNode(expression, right, assignmentOperator);
             }
         }
-        reader.setCursor(cursor);
 
-        // conditional_expression
-        return parseConditionalExpression(reader);
+        return expression;
     }
 
     public static @Nullable List<GlslNode> parseExpression(final GlslTokenReader reader) {
