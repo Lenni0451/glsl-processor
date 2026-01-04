@@ -1,6 +1,7 @@
 package io.github.ocelot.glslprocessor.api.visitor;
 
 import io.github.ocelot.glslprocessor.api.grammar.*;
+import io.github.ocelot.glslprocessor.api.node.GlslCompoundNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.branch.*;
 import io.github.ocelot.glslprocessor.api.node.constant.*;
@@ -192,6 +193,19 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
      */
     public void clear() {
         this.builder.setLength(0);
+    }
+
+    @Override
+    public GlslNodeVisitor visitCompound(GlslCompoundNode node) {
+        this.builder.append(this.base).append(this.prefix);
+        this.builder.append(this.forceInline ? "{" : "{\n");
+        return this.indent();
+    }
+
+    @Override
+    public void visitCompoundEnd(GlslCompoundNode node) {
+        this.builder.append(this.prefix); //This should probably not be here. The for loop doesn't have this issue, but I can't see how it's different.
+        this.acceptClosing();
     }
 
     @Override

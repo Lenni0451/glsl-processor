@@ -2,7 +2,6 @@ package io.github.ocelot.glslprocessor.impl;
 
 import io.github.ocelot.glslprocessor.api.GlslSyntaxException;
 import io.github.ocelot.glslprocessor.api.grammar.*;
-import io.github.ocelot.glslprocessor.api.node.GlslCompoundNode;
 import io.github.ocelot.glslprocessor.api.node.GlslEmptyNode;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslTree;
@@ -1579,9 +1578,6 @@ public class GlslParserImpl {
             reader.markNode(cursor, compoundStatement);
             if (compoundStatement instanceof GlslEmptyNode) {
                 return new ArrayList<>();
-            }
-            if (compoundStatement instanceof GlslCompoundNode compoundNode) {
-                return compoundNode.getChildren();
             }
             return new ArrayList<>(List.of(compoundStatement));
         }

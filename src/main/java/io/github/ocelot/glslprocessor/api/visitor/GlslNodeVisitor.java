@@ -1,5 +1,6 @@
 package io.github.ocelot.glslprocessor.api.visitor;
 
+import io.github.ocelot.glslprocessor.api.node.GlslCompoundNode;
 import io.github.ocelot.glslprocessor.api.node.branch.*;
 import io.github.ocelot.glslprocessor.api.node.constant.GlslConstantNode;
 import io.github.ocelot.glslprocessor.api.node.expression.*;
@@ -25,6 +26,27 @@ public class GlslNodeVisitor {
 
     public GlslNodeVisitor(@Nullable final GlslNodeVisitor parent) {
         this.parent = parent;
+    }
+
+    /**
+     * Visits the specified compound node.
+     *
+     * @param node The node to visit
+     * @return A visitor for the body or <code>null</code> to skip
+     */
+    public @Nullable GlslNodeVisitor visitCompound(final GlslCompoundNode node) {
+        return this.parent != null ? this.parent.visitCompound(node) : null;
+    }
+
+    /**
+     * Visits the end of the specified compound node.
+     *
+     * @param node The node to visit
+     */
+    public void visitCompoundEnd(final GlslCompoundNode node) {
+        if (this.parent != null) {
+            this.parent.visitCompoundEnd(node);
+        }
     }
 
     /**

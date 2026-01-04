@@ -45,8 +45,12 @@ public final class GlslCompoundNode implements GlslNode {
 
     @Override
     public void visit(GlslNodeVisitor visitor) {
-        for (GlslNode node : this.children) {
-            node.visit(visitor);
+        GlslNodeVisitor bodyVisitor = visitor.visitCompound(this);
+        if (bodyVisitor != null) {
+            for (GlslNode node : this.children) {
+                node.visit(bodyVisitor);
+            }
+            visitor.visitCompoundEnd(this);
         }
     }
 
