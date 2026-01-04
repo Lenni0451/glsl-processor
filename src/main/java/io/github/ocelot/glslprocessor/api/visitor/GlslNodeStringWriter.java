@@ -449,16 +449,19 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
 
     public GlslNodeVisitor visitFunctionDeclaration(final GlslFunctionNode node) {
         this.visitFunctionHeader(node.getHeader());
-        this.accept(" {", false, false);
         if (node.getBody() == null) {
             this.accept("", false, true);
             return null;
+        } else {
+            this.accept(" {", false, false);
+            return this.indent();
         }
-        return this.indent();
     }
 
     public void visitFunctionDeclarationEnd(final GlslFunctionNode node) {
-        this.acceptClosing();
+        if (node.getBody() != null) {
+            this.acceptClosing();
+        }
     }
 
     @Override
