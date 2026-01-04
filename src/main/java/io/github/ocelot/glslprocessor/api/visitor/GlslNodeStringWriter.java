@@ -418,6 +418,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
     public void visitUnary(GlslUnaryNode node) {
         GlslUnaryNode.Operand operand = node.getOperand();
         GlslNode expression = node.getExpression();
+        this.addIndent();
         switch (operand) {
             case PRE_INCREMENT,
                  PRE_DECREMENT,
@@ -445,6 +446,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
                 this.builder.append(operand.getDelimiter());
             }
         }
+        this.accept("", false, true);
     }
 
     public GlslNodeVisitor visitFunctionDeclaration(final GlslFunctionNode node) {
