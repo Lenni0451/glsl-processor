@@ -49,7 +49,7 @@ public class GlslNodeList implements List<GlslNode> {
             case AFTER_DECLARATIONS -> {
                 for (int i = 0; i < this.nodes.size(); i++) {
                     if (this.nodes.get(i) instanceof GlslFunctionNode) {
-                        return i + 1;
+                        return i;
                     }
                 }
             }
@@ -69,14 +69,14 @@ public class GlslNodeList implements List<GlslNode> {
             }
             case BEFORE_FUNCTIONS -> {
                 for (int i = 0; i < this.nodes.size(); i++) {
-                    if (!(this.nodes.get(i) instanceof GlslFunctionNode)) {
+                    if (this.nodes.get(i) instanceof GlslFunctionNode) {
                         return i;
                     }
                 }
             }
             case AFTER_FUNCTIONS -> {
-                for (int i = 0; i < this.nodes.size(); i++) {
-                    if (!(this.nodes.get(i) instanceof GlslFunctionNode)) {
+                for (int i = this.nodes.size() - 1; i >= 0; i--) {
+                    if (this.nodes.get(i) instanceof GlslFunctionNode) {
                         return i + 1;
                     }
                 }
