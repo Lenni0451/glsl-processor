@@ -407,6 +407,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
     public void visitCondition(GlslConditionalNode node) {
         GlslNodeStringWriter inline = this.inline();
         this.addIndent();
+        this.builder.append('(');
         node.getCondition().visit(inline);
         this.trimSemicolon();
         this.builder.append(" ? ");
@@ -415,7 +416,7 @@ public final class GlslNodeStringWriter extends GlslNodeVisitor {
         this.builder.append(" : ");
         node.getSecond().visit(inline);
         this.trimSemicolon();
-        this.accept("", false, false);
+        this.accept(")", false, false);
     }
 
     @Override
