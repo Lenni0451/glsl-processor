@@ -3,6 +3,7 @@ package io.github.ocelot.glslprocessor.api.visitor;
 import io.github.ocelot.glslprocessor.api.grammar.GlslVersionStatement;
 import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslTree;
+import io.github.ocelot.glslprocessor.api.node.expression.GlslPrecisionNode;
 import io.github.ocelot.glslprocessor.api.node.function.GlslFunctionNode;
 import io.github.ocelot.glslprocessor.api.node.variable.GlslNewFieldNode;
 import io.github.ocelot.glslprocessor.api.node.variable.GlslStructDeclarationNode;
@@ -78,6 +79,15 @@ public final class GlslTreeStringWriter extends GlslTreeVisitor {
 
     @Override
     public void visitDeclaration(GlslVariableDeclarationNode node) {
+        String marker = this.markedNodes.get(node);
+        if (marker != null) {
+            this.builder.append("/* #").append(marker).append(" */\n");
+        }
+        this.builder.append(this.formatExpression(node));
+    }
+
+    @Override
+    public void visitPrecision(GlslPrecisionNode node) {
         String marker = this.markedNodes.get(node);
         if (marker != null) {
             this.builder.append("/* #").append(marker).append(" */\n");

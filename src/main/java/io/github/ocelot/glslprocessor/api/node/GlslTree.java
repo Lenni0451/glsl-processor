@@ -6,6 +6,7 @@ import io.github.ocelot.glslprocessor.api.grammar.GlslVersionStatement;
 import io.github.ocelot.glslprocessor.api.node.branch.GlslForLoopNode;
 import io.github.ocelot.glslprocessor.api.node.branch.GlslIfNode;
 import io.github.ocelot.glslprocessor.api.node.branch.GlslWhileLoopNode;
+import io.github.ocelot.glslprocessor.api.node.expression.GlslPrecisionNode;
 import io.github.ocelot.glslprocessor.api.node.function.GlslFunctionNode;
 import io.github.ocelot.glslprocessor.api.node.variable.GlslNewFieldNode;
 import io.github.ocelot.glslprocessor.api.node.variable.GlslStructDeclarationNode;
@@ -73,6 +74,10 @@ public final class GlslTree {
         }
         if (node instanceof GlslVariableDeclarationNode declaration) {
             visitor.visitDeclaration(declaration);
+            return;
+        }
+        if (node instanceof GlslPrecisionNode precision) {
+            visitor.visitPrecision(precision);
             return;
         }
         throw new AssertionError("Not Possible: " + node.getClass());
