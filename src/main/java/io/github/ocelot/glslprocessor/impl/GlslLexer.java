@@ -225,6 +225,7 @@ public class GlslLexer {
         IN("in"),
         OUT("out"),
         INOUT("inout"),
+        VARYING("varying"),
         UNIFORM("uniform"),
         PATCH("patch"),
         SAMPLE("sample"),
@@ -560,6 +561,7 @@ public class GlslLexer {
                 case IN -> GlslTypeQualifier.StorageType.IN;
                 case OUT -> GlslTypeQualifier.StorageType.OUT;
                 case INOUT -> GlslTypeQualifier.StorageType.INOUT;
+                case VARYING -> GlslTypeQualifier.StorageType.VARYING;
                 case CENTROID -> GlslTypeQualifier.StorageType.CENTROID;
                 case PATCH -> GlslTypeQualifier.StorageType.PATCH;
                 case SAMPLE -> GlslTypeQualifier.StorageType.SAMPLE;

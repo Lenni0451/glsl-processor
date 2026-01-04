@@ -127,6 +127,7 @@ public sealed interface GlslTypeQualifier {
         IN,
         OUT,
         INOUT,
+        VARYING,
         CENTROID,
         PATCH,
         SAMPLE,
