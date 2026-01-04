@@ -1,5 +1,5 @@
 plugins {
-    id "java"
+    id "java-library"
     id "base.java"
     id "base.junit"
     id "base.maven_publish"
@@ -15,19 +15,4 @@ dependencies {
     testCompileOnly libs.lombok
     testAnnotationProcessor libs.lombok
     testImplementation libs.guava
-}
-
-processResources {
-    var projectMavenVersion = project.maven_version
-
-    //Config file: "version: ${version}"
-    inputs.properties(
-            "version": projectMavenVersion
-    )
-
-    filesMatching("config.yml") {
-        expand(
-                "version": projectMavenVersion
-        )
-    }
 }
