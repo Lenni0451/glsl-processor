@@ -14,28 +14,19 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+import javax.annotation.Nonnull;
 
 /**
- * A preprocessor exception.
- * <p>
- * Note to users: I don't really like the name of this class. S.
+ * An extremely lightweight virtual file system interface.
  */
-public class LexerException extends Exception {
+public interface VirtualFileSystem {
 
-    public LexerException(String msg) {
-        super(msg);
-    }
+    @Nonnull
+    public VirtualFile getFile(@Nonnull String path);
 
-    public LexerException(Throwable cause) {
-        super(cause);
-    }
+    @Nonnull
+    public VirtualFile getFile(@Nonnull String dir, @Nonnull String name);
 }

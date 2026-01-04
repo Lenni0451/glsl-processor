@@ -14,51 +14,30 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
-
-import org.jetbrains.annotations.ApiStatus;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
 /**
  * Features of the Preprocessor, which may be enabled or disabled.
  */
-@ApiStatus.Internal
 public enum Feature {
 
-    /**
-     * Supports ANSI digraphs.
-     */
+    /** Supports ANSI digraphs. */
     DIGRAPHS,
-    /**
-     * Supports ANSI trigraphs.
-     */
+    /** Supports ANSI trigraphs. */
     TRIGRAPHS,
-    /**
-     * Outputs linemarker tokens.
-     */
+    /** Outputs linemarker tokens. */
     LINEMARKERS,
-    /**
-     * Reports tokens of type INVALID as errors.
-     */
+    /** Reports tokens of type INVALID as errors. */
     CSYNTAX,
-    /**
-     * Preserves comments in the lexed output. Like cpp -C
-     */
+    /** Preserves comments in the lexed output. Like cpp -C */
     KEEPCOMMENTS,
-    /**
-     * Preserves comments in the lexed output, even when inactive.
-     */
+    /** Preserves comments in the lexed output, even when inactive. */
     KEEPALLCOMMENTS,
+    DEBUG,
+    /** Supports lexing of objective-C. */
+    OBJCSYNTAX,
     INCLUDENEXT,
-    /**
-     * Random extensions.
-     */
+    /** Random extensions. */
     PRAGMA_ONCE
 }

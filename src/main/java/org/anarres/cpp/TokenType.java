@@ -3,46 +3,37 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnegative;
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.github.ocelot.glslprocessor.lib.anarres.cpp.Token.*;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+import static org.anarres.cpp.Token.*;
 
 /**
+ *
  * @author shevek
  */
-@ApiStatus.Internal
-record TokenType(String name, String text) {
+/* pp */ class TokenType {
 
-    private static final List<TokenType> TYPES = new ArrayList<>();
+    private static final List<TokenType> TYPES = new ArrayList<TokenType>();
 
-    private static void addTokenType(int type, @NotNull String name, @Nullable String text) {
-        while (TYPES.size() <= type) {
+    private static void addTokenType(@Nonnegative int type, @Nonnull String name, @CheckForNull String text) {
+        while (TYPES.size() <= type)
             TYPES.add(null);
-        }
         TYPES.set(type, new TokenType(name, text));
     }
 
-    private static void addTokenType(int type, @NotNull String name) {
+    private static void addTokenType(@Nonnegative int type, @Nonnull String name) {
         addTokenType(type, name, null);
     }
 
-    @Nullable
-    public static TokenType getTokenType(int type) {
+    @CheckForNull
+    public static TokenType getTokenType(@Nonnegative int type) {
         try {
             return TYPES.get(type);
         } catch (IndexOutOfBoundsException e) {
@@ -50,22 +41,22 @@ record TokenType(String name, String text) {
         }
     }
 
-    @NotNull
-    public static String getTokenName(int type) {
+    @Nonnull
+    public static String getTokenName(@Nonnegative int type) {
+        if (type < 0)
+            return "Invalid" + type;
         TokenType tokenType = getTokenType(type);
-        if (tokenType == null) {
+        if (tokenType == null)
             return "Unknown" + type;
-        }
-        return tokenType.name();
+        return tokenType.getName();
     }
 
-    @Nullable
-    public static String getTokenText(int type) {
+    @CheckForNull
+    public static String getTokenText(@Nonnegative int type) {
         TokenType tokenType = getTokenType(type);
-        if (tokenType == null) {
+        if (tokenType == null)
             return null;
-        }
-        return tokenType.text();
+        return tokenType.getText();
     }
 
     static {
@@ -119,20 +110,21 @@ record TokenType(String name, String text) {
         addTokenType(INVALID, "INVALID");
     }
 
-    TokenType(@NotNull String name, @Nullable String text) {
+    private final String name;
+    private final String text;
+
+    /* pp */ TokenType(@Nonnull String name, @CheckForNull String text) {
         this.name = name;
         this.text = text;
     }
 
-    @Override
-    @NotNull
-    public String name() {
-        return this.name;
+    @Nonnull
+    public String getName() {
+        return name;
     }
 
-    @Override
-    @Nullable
-    public String text() {
-        return this.text;
+    @CheckForNull
+    public String getText() {
+        return text;
     }
 }

@@ -14,32 +14,28 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.anarres.cpp.PreprocessorListener.SourceChangeEvent;
 
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import static io.github.ocelot.glslprocessor.lib.anarres.cpp.PreprocessorCommand.PP_ERROR;
-import static io.github.ocelot.glslprocessor.lib.anarres.cpp.Token.*;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+import static org.anarres.cpp.PreprocessorCommand.PP_ERROR;
+import static org.anarres.cpp.Token.*;
 
 /**
  * A C Preprocessor.
  * The Preprocessor outputs a token stream which does not need
  * re-lexing for C or C++. Alternatively, the output text may be
  * reconstructed by concatenating the {@link Token#getText() text}
- * values of the returned {@link Token Tokens}.
+ * values of the returned {@link Token Tokens}. (See
+ * {@link CppReader}, which does this.)
  */
 /*
  * Source file name and line number information is conveyed by lines of the form
@@ -68,13 +64,19 @@ import static io.github.ocelot.glslprocessor.lib.anarres.cpp.Token.*;
  * This indicates that the following text should be treated as being
  * wrapped in an implicit extern "C" block.
  */
-@ApiStatus.Internal
-public class Preprocessor {
+public class Preprocessor implements Closeable {
 
     private static final Source INTERNAL = new Source() {
         @Override
-        public Token token() throws LexerException {
-            throw new LexerException("Cannot read from " + this.getName());
+        public Token token()
+                throws IOException,
+                LexerException {
+            throw new LexerException("Cannot read from " + getName());
+        }
+
+        @Override
+        public String getPath() {
+            return "<internal-data>";
         }
 
         @Override
@@ -95,173 +97,351 @@ public class Preprocessor {
 
     /* Miscellaneous support. */
     private int counter;
+    private final Set<String> onceseenpaths = new HashSet<String>();
+    private final List<VirtualFile> includes = new ArrayList<VirtualFile>();
 
     /* Support junk to make it work like cpp */
+    private List<String> quoteincludepath;	/* -iquote */
+
+    private List<String> sysincludepath;		/* -I */
+
+    private List<String> frameworkspath;
     private final Set<Feature> features;
     private final Set<Warning> warnings;
+    private VirtualFileSystem filesystem;
+    private PreprocessorListener listener;
 
     public Preprocessor() {
-        this.inputs = new ArrayList<>();
+        this.inputs = new ArrayList<Source>();
 
-        this.macros = new HashMap<>();
-        this.macros.put(__LINE__.getName(), __LINE__);
-        this.macros.put(__FILE__.getName(), __FILE__);
-        this.macros.put(__COUNTER__.getName(), __COUNTER__);
-        this.states = new Stack<>();
-        this.states.push(new State());
+        this.macros = new HashMap<String, Macro>();
+        macros.put(__LINE__.getName(), __LINE__);
+        macros.put(__FILE__.getName(), __FILE__);
+        macros.put(__COUNTER__.getName(), __COUNTER__);
+        this.states = new Stack<State>();
+        states.push(new State());
         this.source = null;
 
         this.counter = 0;
 
+        this.quoteincludepath = new ArrayList<String>();
+        this.sysincludepath = new ArrayList<String>();
+        this.frameworkspath = new ArrayList<String>();
         this.features = EnumSet.noneOf(Feature.class);
         this.warnings = EnumSet.noneOf(Warning.class);
+        this.filesystem = new JavaFileSystem();
+        this.listener = null;
+    }
+
+    public Preprocessor(@Nonnull Source initial) {
+        this();
+        addInput(initial);
+    }
+
+    /** Equivalent to
+     * 'new Preprocessor(new {@link FileLexerSource}(file))'
+     */
+    public Preprocessor(@Nonnull File file)
+            throws IOException {
+        this(new FileLexerSource(file));
+    }
+
+    /**
+     * Sets the VirtualFileSystem used by this Preprocessor.
+     */
+    public void setFileSystem(@Nonnull VirtualFileSystem filesystem) {
+        this.filesystem = filesystem;
+    }
+
+    /**
+     * Returns the VirtualFileSystem used by this Preprocessor.
+     */
+    @Nonnull
+    public VirtualFileSystem getFileSystem() {
+        return filesystem;
+    }
+
+    /**
+     * Sets the PreprocessorListener which handles events for
+     * this Preprocessor.
+     *
+     * The listener is notified of warnings, errors and source
+     * changes, amongst other things.
+     */
+    public void setListener(@Nonnull PreprocessorListener listener) {
+        this.listener = listener;
+        Source s = source;
+        while (s != null) {
+            // s.setListener(listener);
+            s.init(this);
+            s = s.getParent();
+        }
+    }
+
+    /**
+     * Returns the PreprocessorListener which handles events for
+     * this Preprocessor.
+     */
+    @Nonnull
+    public PreprocessorListener getListener() {
+        return listener;
+    }
+
+    /**
+     * Returns the feature-set for this Preprocessor.
+     *
+     * This set may be freely modified by user code.
+     */
+    @Nonnull
+    public Set<Feature> getFeatures() {
+        return features;
     }
 
     /**
      * Adds a feature to the feature-set of this Preprocessor.
      */
-    public void addFeature(@NotNull Feature f) {
-        this.features.add(f);
+    public void addFeature(@Nonnull Feature f) {
+        features.add(f);
+    }
+
+    /**
+     * Adds features to the feature-set of this Preprocessor.
+     */
+    public void addFeatures(@Nonnull Collection<Feature> f) {
+        features.addAll(f);
+    }
+
+    /**
+     * Adds features to the feature-set of this Preprocessor.
+     */
+    public void addFeatures(Feature... f) {
+        addFeatures(Arrays.asList(f));
     }
 
     /**
      * Returns true if the given feature is in
      * the feature-set of this Preprocessor.
      */
-    public boolean getFeature(@NotNull Feature f) {
-        return this.features.contains(f);
+    public boolean getFeature(@Nonnull Feature f) {
+        return features.contains(f);
     }
 
     /**
      * Returns the warning-set for this Preprocessor.
-     * <p>
+     *
      * This set may be freely modified by user code.
      */
-    @NotNull
+    @Nonnull
     public Set<Warning> getWarnings() {
-        return this.warnings;
+        return warnings;
+    }
+
+    /**
+     * Adds a warning to the warning-set of this Preprocessor.
+     */
+    public void addWarning(@Nonnull Warning w) {
+        warnings.add(w);
+    }
+
+    /**
+     * Adds warnings to the warning-set of this Preprocessor.
+     */
+    public void addWarnings(@Nonnull Collection<Warning> w) {
+        warnings.addAll(w);
     }
 
     /**
      * Returns true if the given warning is in
      * the warning-set of this Preprocessor.
      */
-    public boolean getWarning(@NotNull Warning w) {
-        return this.warnings.contains(w);
+    public boolean getWarning(@Nonnull Warning w) {
+        return warnings.contains(w);
     }
 
     /**
      * Adds input for the Preprocessor.
-     * <p>
+     *
      * Inputs are processed in the order in which they are added.
      */
-    public void addInput(@NotNull Source source) {
+    public void addInput(@Nonnull Source source) {
         source.init(this);
-        this.inputs.add(source);
+        inputs.add(source);
+    }
+
+    /**
+     * Adds input for the Preprocessor.
+     *
+     * @see #addInput(Source)
+     */
+    public void addInput(@Nonnull File file)
+            throws IOException {
+        addInput(new FileLexerSource(file));
     }
 
     /**
      * Handles an error.
-     * <p>
+     *
      * If a PreprocessorListener is installed, it receives the
      * error. Otherwise, an exception is thrown.
      */
-    protected void error(int line, int column, @NotNull String msg)
+    protected void error(int line, int column, @Nonnull String msg)
             throws LexerException {
-        throw new LexerException("Error at " + line + ":" + column + ": " + msg);
+        if (listener != null)
+            listener.handleError(source, line, column, msg);
+        else
+            throw new LexerException("Error at " + line + ":" + column + ": " + msg);
     }
 
     /**
      * Handles an error.
-     * <p>
+     *
      * If a PreprocessorListener is installed, it receives the
      * error. Otherwise, an exception is thrown.
      *
      * @see #error(int, int, String)
      */
-    protected void error(@NotNull Token tok, @NotNull String msg)
+    protected void error(@Nonnull Token tok, @Nonnull String msg)
             throws LexerException {
-        this.error(tok.getLine(), tok.getColumn(), msg);
+        error(tok.getLine(), tok.getColumn(), msg);
     }
 
     /**
      * Handles a warning.
-     * <p>
+     *
      * If a PreprocessorListener is installed, it receives the
      * warning. Otherwise, an exception is thrown.
      */
-    protected void warning(int line, int column, @NotNull String msg)
+    protected void warning(int line, int column, @Nonnull String msg)
             throws LexerException {
-        if (this.warnings.contains(Warning.ERROR)) {
-            this.error(line, column, msg);
-        } else {
+        if (warnings.contains(Warning.ERROR))
+            error(line, column, msg);
+        else if (listener != null)
+            listener.handleWarning(source, line, column, msg);
+        else
             throw new LexerException("Warning at " + line + ":" + column + ": " + msg);
-        }
     }
 
     /**
      * Handles a warning.
-     * <p>
+     *
      * If a PreprocessorListener is installed, it receives the
      * warning. Otherwise, an exception is thrown.
      *
      * @see #warning(int, int, String)
      */
-    protected void warning(@NotNull Token tok, @NotNull String msg)
+    protected void warning(@Nonnull Token tok, @Nonnull String msg)
             throws LexerException {
-        this.warning(tok.getLine(), tok.getColumn(), msg);
+        warning(tok.getLine(), tok.getColumn(), msg);
     }
 
     /**
      * Adds a Macro to this Preprocessor.
-     * <p>
+     *
      * The given {@link Macro} object encapsulates both the name
      * and the expansion.
      *
      * @throws LexerException if the definition fails or is otherwise illegal.
      */
-    public void addMacro(@NotNull Macro m) throws LexerException {
+    public void addMacro(@Nonnull Macro m) throws LexerException {
         // System.out.println("Macro " + m);
         String name = m.getName();
         /* Already handled as a source error in macro(). */
-        if ("defined".equals(name)) {
+        if ("defined".equals(name))
             throw new LexerException("Cannot redefine name 'defined'");
-        }
-        this.macros.put(m.getName(), m);
+        macros.put(m.getName(), m);
     }
 
     /**
      * Defines the given name as a macro.
-     * <p>
+     *
      * The String value is lexed into a token stream, which is
      * used as the macro expansion.
      *
      * @throws LexerException if the definition fails or is otherwise illegal.
      */
-    public void addMacro(@NotNull String name, @NotNull String value) throws LexerException {
-        Macro m = new Macro(name);
-        StringLexerSource s = new StringLexerSource(value);
-        while (true) {
-            Token tok = s.token();
-            if (tok.getType() == EOF) {
-                break;
+    public void addMacro(@Nonnull String name, @Nonnull String value)
+            throws LexerException {
+        try {
+            Macro m = new Macro(name);
+            StringLexerSource s = new StringLexerSource(value);
+            for (;;) {
+                Token tok = s.token();
+                if (tok.getType() == EOF)
+                    break;
+                m.addToken(tok);
             }
-            m.addToken(tok);
+            addMacro(m);
+        } catch (IOException e) {
+            throw new LexerException(e);
         }
-        this.addMacro(m);
     }
 
     /**
      * Defines the given name as a macro, with the value <code>1</code>.
-     * <p>
+     *
      * This is a convnience method, and is equivalent to
      * <code>addMacro(name, "1")</code>.
      *
      * @throws LexerException if the definition fails or is otherwise illegal.
      */
-    public void addMacro(@NotNull String name)
+    public void addMacro(@Nonnull String name)
             throws LexerException {
-        this.addMacro(name, "1");
+        addMacro(name, "1");
+    }
+
+    /**
+     * Sets the user include path used by this Preprocessor.
+     */
+    /* Note for future: Create an IncludeHandler? */
+    public void setQuoteIncludePath(@Nonnull List<String> path) {
+        this.quoteincludepath = path;
+    }
+
+    /**
+     * Returns the user include-path of this Preprocessor.
+     *
+     * This list may be freely modified by user code.
+     */
+    @Nonnull
+    public List<String> getQuoteIncludePath() {
+        return quoteincludepath;
+    }
+
+    /**
+     * Sets the system include path used by this Preprocessor.
+     */
+    /* Note for future: Create an IncludeHandler? */
+    public void setSystemIncludePath(@Nonnull List<String> path) {
+        this.sysincludepath = path;
+    }
+
+    /**
+     * Returns the system include-path of this Preprocessor.
+     *
+     * This list may be freely modified by user code.
+     */
+    @Nonnull
+    public List<String> getSystemIncludePath() {
+        return sysincludepath;
+    }
+
+    /**
+     * Sets the Objective-C frameworks path used by this Preprocessor.
+     */
+    /* Note for future: Create an IncludeHandler? */
+    public void setFrameworksPath(@Nonnull List<String> path) {
+        this.frameworkspath = path;
+    }
+
+    /**
+     * Returns the Objective-C frameworks path used by this
+     * Preprocessor.
+     *
+     * This list may be freely modified by user code.
+     */
+    @Nonnull
+    public List<String> getFrameworksPath() {
+        return frameworkspath;
     }
 
     /**
@@ -270,107 +450,137 @@ public class Preprocessor {
      *
      * @return The {@link Map} of macros currently defined.
      */
-    @NotNull
+    @Nonnull
     public Map<String, Macro> getMacros() {
-        return this.macros;
+        return macros;
     }
 
     /**
      * Returns the named macro.
-     * <p>
+     *
      * While you can modify the returned object, unexpected things
      * might happen if you do.
      *
      * @return the Macro object, or null if not found.
      */
-    @Nullable
-    public Macro getMacro(@NotNull String name) {
-        return this.macros.get(name);
+    @CheckForNull
+    public Macro getMacro(@Nonnull String name) {
+        return macros.get(name);
+    }
+
+    /**
+     * Returns the list of {@link VirtualFile VirtualFiles} which have been
+     * included by this Preprocessor.
+     *
+     * This does not include any {@link Source} provided to the constructor
+     * or {@link #addInput(java.io.File)} or {@link #addInput(Source)}.
+     */
+    @Nonnull
+    public List<? extends VirtualFile> getIncludes() {
+        return includes;
     }
 
     /* States */
     private void push_state() {
-        State top = this.states.peek();
-        this.states.push(new State(top));
+        State top = states.peek();
+        states.push(new State(top));
     }
 
     private void pop_state()
             throws LexerException {
-        State s = this.states.pop();
-        if (this.states.isEmpty()) {
-            this.error(0, 0, "#" + "endif without #" + "if");
-            this.states.push(s);
+        State s = states.pop();
+        if (states.isEmpty()) {
+            error(0, 0, "#" + "endif without #" + "if");
+            states.push(s);
         }
     }
 
-    private boolean isNotActive() {
-        State state = this.states.peek();
-        return !state.isParentActive() || !state.isActive();
+    private boolean isActive() {
+        State state = states.peek();
+        return state.isParentActive() && state.isActive();
     }
 
 
     /* Sources */
-
     /**
      * Returns the top Source on the input stack.
      *
-     * @return the top Source on the input stack.
      * @see Source
-     * @see #push_source(Source, boolean)
+     * @see #push_source(Source,boolean)
      * @see #pop_source()
+     *
+     * @return the top Source on the input stack.
      */
-    // @Nullable
+    // @CheckForNull
     protected Source getSource() {
-        return this.source;
+        return source;
     }
 
     /**
      * Pushes a Source onto the input stack.
      *
-     * @param source  the new Source to push onto the top of the input stack.
+     * @param source the new Source to push onto the top of the input stack.
      * @param autopop if true, the Source is automatically removed from the input stack at EOF.
      * @see #getSource()
      * @see #pop_source()
      */
-    protected void push_source(@NotNull Source source, boolean autopop) {
+    protected void push_source(@Nonnull Source source, boolean autopop) {
         source.init(this);
         source.setParent(this.source, autopop);
         // source.setListener(listener);
+        if (listener != null)
+            listener.handleSourceChange(this.source, SourceChangeEvent.SUSPEND);
         this.source = source;
+        if (listener != null)
+            listener.handleSourceChange(this.source, SourceChangeEvent.PUSH);
     }
 
     /**
      * Pops a Source from the input stack.
      *
      * @see #getSource()
-     * @see #push_source(Source, boolean)
+     * @see #push_source(Source,boolean)
+     *
+     * @param linemarker TODO: currently ignored, might be a bug?
+     * @throws IOException if an I/O error occurs.
      */
-    @Nullable
-    protected Token pop_source() {
+    @CheckForNull
+    protected Token pop_source(boolean linemarker)
+            throws IOException {
+        if (listener != null)
+            listener.handleSourceChange(this.source, SourceChangeEvent.POP);
         Source s = this.source;
         this.source = s.getParent();
+        /* Always a noop unless called externally. */
+        s.close();
+        if (listener != null && this.source != null)
+            listener.handleSourceChange(this.source, SourceChangeEvent.RESUME);
 
-        Source t = this.getSource();
-        if (this.getFeature(Feature.LINEMARKERS)
+        Source t = getSource();
+        if (getFeature(Feature.LINEMARKERS)
                 && s.isNumbered()
                 && t != null) {
             /* We actually want 'did the nested source
              * contain a newline token', which isNumbered()
              * approximates. This is not perfect, but works. */
-            return this.line_token(t.getLine(), t.getName(), " 2");
+            return line_token(t.getLine(), t.getName(), " 2");
         }
 
         return null;
     }
 
-    @NotNull
+    protected void pop_source()
+            throws IOException {
+        pop_source(false);
+    }
+
+    @Nonnull
     private Token next_source() {
-        if (this.inputs.isEmpty()) {
+        if (inputs.isEmpty())
             return new Token(EOF);
-        }
-        Source s = this.inputs.remove(0);
-        this.push_source(s, true);
-        return this.line_token(s.getLine(), s.getName(), " 1");
+        Source s = inputs.remove(0);
+        push_source(s, true);
+        return line_token(s.getLine(), s.getName(), " 1");
     }
 
     /* Source tokens */
@@ -378,55 +588,58 @@ public class Preprocessor {
 
     /* XXX Make this include the NL, and make all cpp directives eat
      * their own NL. */
-    @NotNull
-    private Token line_token(int line, @Nullable String name, @NotNull String extra) {
+    @Nonnull
+    private Token line_token(int line, @CheckForNull String name, @Nonnull String extra) {
         StringBuilder buf = new StringBuilder();
-        buf.append("#line ").append(line).append(" \"");
+        buf.append("#line ").append(line)
+                .append(" \"");
         /* XXX This call to escape(name) is correct but ugly. */
-        if (name == null) {
+        if (name == null)
             buf.append("<no file>");
-        } else {
+        else
             MacroTokenSource.escape(buf, name);
-        }
         buf.append("\"").append(extra).append("\n");
         return new Token(P_LINE, line, 0, buf.toString(), null);
     }
 
-    @NotNull
-    private Token source_token() throws LexerException {
-        if (this.source_token != null) {
-            Token tok = this.source_token;
-            this.source_token = null;
+    @Nonnull
+    private Token source_token()
+            throws IOException,
+            LexerException {
+        if (source_token != null) {
+            Token tok = source_token;
+            source_token = null;
+            if (getFeature(Feature.DEBUG))
+                System.out.println("Returning unget token " + tok);
             return tok;
         }
 
-        while (true) {
-            Source s = this.getSource();
+        for (;;) {
+            Source s = getSource();
             if (s == null) {
-                Token t = this.next_source();
-                if (t.getType() == P_LINE && !this.getFeature(Feature.LINEMARKERS)) {
+                Token t = next_source();
+                if (t.getType() == P_LINE && !getFeature(Feature.LINEMARKERS))
                     continue;
-                }
                 return t;
             }
             Token tok = s.token();
             /* XXX Refactor with skipline() */
             if (tok.getType() == EOF && s.isAutopop()) {
                 // System.out.println("Autopop " + s);
-                Token mark = this.pop_source();
-                if (mark != null) {
+                Token mark = pop_source(true);
+                if (mark != null)
                     return mark;
-                }
                 continue;
             }
+            if (getFeature(Feature.DEBUG))
+                System.out.println("Returning fresh token " + tok);
             return tok;
         }
     }
 
     private void source_untoken(Token tok) {
-        if (this.source_token != null) {
+        if (this.source_token != null)
             throw new IllegalStateException("Cannot return two tokens");
-        }
         this.source_token = tok;
     }
 
@@ -437,33 +650,36 @@ public class Preprocessor {
                 || (type == CPPCOMMENT);
     }
 
-    private Token source_token_nonwhite() throws LexerException {
+    private Token source_token_nonwhite()
+            throws IOException,
+            LexerException {
         Token tok;
         do {
-            tok = this.source_token();
-        } while (this.isWhite(tok));
+            tok = source_token();
+        } while (isWhite(tok));
         return tok;
     }
 
     /**
      * Returns an NL or an EOF token.
-     * <p>
+     *
      * The metadata on the token will be correct, which is better
      * than generating a new one.
-     * <p>
+     *
      * This method can, as of recent patches, return a P_LINE token.
      */
-    private Token source_skipline(boolean white) throws LexerException {
+    private Token source_skipline(boolean white)
+            throws IOException,
+            LexerException {
         // (new Exception("skipping line")).printStackTrace(System.out);
-        Source s = this.getSource();
+        Source s = getSource();
         Token tok = s.skipline(white);
         /* XXX Refactor with source_token() */
         if (tok.getType() == EOF && s.isAutopop()) {
             // System.out.println("Autopop " + s);
-            Token mark = this.pop_source();
-            if (mark != null) {
+            Token mark = pop_source(true);
+            if (mark != null)
                 return mark;
-            }
         }
         return tok;
     }
@@ -478,44 +694,44 @@ public class Preprocessor {
         // System.out.println("pp: expanding " + m);
         if (m.isFunctionLike()) {
             OPEN:
-            while (true) {
-                tok = this.source_token();
+            for (;;) {
+                tok = source_token();
                 // System.out.println("pp: open: token is " + tok);
                 switch (tok.getType()) {
-                    case WHITESPACE:    /* XXX Really? */
+                    case WHITESPACE:	/* XXX Really? */
 
                     case CCOMMENT:
                     case CPPCOMMENT:
                     case NL:
-                        break;    /* continue */
+                        break;	/* continue */
 
                     case '(':
                         break OPEN;
                     default:
-                        this.source_untoken(tok);
+                        source_untoken(tok);
                         return false;
                 }
             }
 
             // tok = expanded_token_nonwhite();
-            tok = this.source_token_nonwhite();
+            tok = source_token_nonwhite();
 
             /* We either have, or we should have args.
              * This deals elegantly with the case that we have
              * one empty arg. */
             if (tok.getType() != ')' || m.getArgs() > 0) {
-                args = new ArrayList<>();
+                args = new ArrayList<Argument>();
 
                 Argument arg = new Argument();
                 int depth = 0;
                 boolean space = false;
 
                 ARGS:
-                while (true) {
+                for (;;) {
                     // System.out.println("pp: arg: token is " + tok);
                     switch (tok.getType()) {
                         case EOF:
-                            this.error(tok, "EOF in macro args");
+                            error(tok, "EOF in macro args");
                             return false;
 
                         case ',':
@@ -560,16 +776,15 @@ public class Preprocessor {
                         default:
                             /* Do not put space on the beginning of
                              * an argument token. */
-                            if (space && !arg.isEmpty()) {
+                            if (space && !arg.isEmpty())
                                 arg.addToken(Token.space);
-                            }
                             arg.addToken(tok);
                             space = false;
                             break;
 
                     }
                     // tok = expanded_token();
-                    tok = this.source_token();
+                    tok = source_token();
                 }
                 /* space may still be true here, thus trailing space
                  * is stripped from arguments. */
@@ -579,18 +794,18 @@ public class Preprocessor {
                         if (args.size() == m.getArgs() - 1) {
                             args.add(new Argument());
                         } else {
-                            this.error(tok,
+                            error(tok,
                                     "variadic macro " + m.getName()
-                                            + " has at least " + (m.getArgs() - 1) + " parameters "
-                                            + "but given " + args.size() + " args");
+                                    + " has at least " + (m.getArgs() - 1) + " parameters "
+                                    + "but given " + args.size() + " args");
                             return false;
                         }
                     } else {
-                        this.error(tok,
+                        error(tok,
                                 "macro " + m.getName()
-                                        + " has " + m.getArgs() + " parameters "
-                                        + "but given " + args.size() + " args");
-                        /* We could replay the arg tokens, but I
+                                + " has " + m.getArgs() + " parameters "
+                                + "but given " + args.size() + " args");
+                        /* We could replay the arg tokens, but I 
                          * note that GNU cpp does exactly what we do,
                          * i.e. output the macro name and chew the args.
                          */
@@ -614,17 +829,17 @@ public class Preprocessor {
         }
 
         if (m == __LINE__) {
-            this.push_source(new FixedTokenSource(
-                    new Token(NUMBER,
-                            orig.getLine(), orig.getColumn(),
-                            Integer.toString(orig.getLine()),
-                            new NumericValue(10, Integer.toString(orig.getLine())))), true);
+            push_source(new FixedTokenSource(
+                    new Token[]{new Token(NUMBER,
+                                orig.getLine(), orig.getColumn(),
+                                Integer.toString(orig.getLine()),
+                                new NumericValue(10, Integer.toString(orig.getLine())))}
+            ), true);
         } else if (m == __FILE__) {
             StringBuilder buf = new StringBuilder("\"");
-            String name = this.getSource().getName();
-            if (name == null) {
+            String name = getSource().getName();
+            if (name == null)
                 name = "<no file>";
-            }
             for (int i = 0; i < name.length(); i++) {
                 char c = name.charAt(i);
                 switch (c) {
@@ -641,14 +856,23 @@ public class Preprocessor {
             }
             buf.append("\"");
             String text = buf.toString();
-            this.push_source(new FixedTokenSource(new Token(STRING, orig.getLine(), orig.getColumn(), text, text)), true);
+            push_source(new FixedTokenSource(
+                    new Token[]{new Token(STRING,
+                                orig.getLine(), orig.getColumn(),
+                                text, text)}
+            ), true);
         } else if (m == __COUNTER__) {
             /* This could equivalently have been done by adding
              * a special Macro subclass which overrides getTokens(). */
             int value = this.counter++;
-            this.push_source(new FixedTokenSource(new Token(NUMBER, orig.getLine(), orig.getColumn(), Integer.toString(value), new NumericValue(10, Integer.toString(value)))), true);
+            push_source(new FixedTokenSource(
+                    new Token[]{new Token(NUMBER,
+                                orig.getLine(), orig.getColumn(),
+                                Integer.toString(value),
+                                new NumericValue(10, Integer.toString(value)))}
+            ), true);
         } else {
-            this.push_source(new MacroTokenSource(m, args), true);
+            push_source(new MacroTokenSource(m, args), true);
         }
 
         return true;
@@ -658,18 +882,18 @@ public class Preprocessor {
      * Expands an argument.
      */
     /* I'd rather this were done lazily, but doing so breaks spec. */
-    @NotNull
-    List<Token> expand(@NotNull List<Token> arg)
+    @Nonnull
+    /* pp */ List<Token> expand(@Nonnull List<Token> arg)
             throws IOException,
             LexerException {
-        List<Token> expansion = new ArrayList<>();
+        List<Token> expansion = new ArrayList<Token>();
         boolean space = false;
 
-        this.push_source(new FixedTokenSource(arg), false);
+        push_source(new FixedTokenSource(arg), false);
 
         EXPANSION:
-        while (true) {
-            Token tok = this.expanded_token();
+        for (;;) {
+            Token tok = expanded_token();
             switch (tok.getType()) {
                 case EOF:
                     break EXPANSION;
@@ -681,9 +905,8 @@ public class Preprocessor {
                     break;
 
                 default:
-                    if (space && !expansion.isEmpty()) {
+                    if (space && !expansion.isEmpty())
                         expansion.add(Token.space);
-                    }
                     expansion.add(tok);
                     space = false;
                     break;
@@ -691,36 +914,38 @@ public class Preprocessor {
         }
 
         // Always returns null.
-        this.pop_source();
+        pop_source(false);
 
         return expansion;
     }
 
     /* processes a #define directive */
-    private Token define() throws LexerException {
-        Token tok = this.source_token_nonwhite();
+    private Token define()
+            throws IOException,
+            LexerException {
+        Token tok = source_token_nonwhite();
         if (tok.getType() != IDENTIFIER) {
-            this.error(tok, "Expected identifier");
-            return this.source_skipline(false);
+            error(tok, "Expected identifier");
+            return source_skipline(false);
         }
         /* if predefined */
 
         String name = tok.getText();
         if ("defined".equals(name)) {
-            this.error(tok, "Cannot redefine name 'defined'");
-            return this.source_skipline(false);
+            error(tok, "Cannot redefine name 'defined'");
+            return source_skipline(false);
         }
 
-        Macro m = new Macro(this.getSource(), name);
+        Macro m = new Macro(getSource(), name);
         List<String> args;
 
-        tok = this.source_token();
+        tok = source_token();
         if (tok.getType() == '(') {
-            tok = this.source_token_nonwhite();
+            tok = source_token_nonwhite();
             if (tok.getType() != ')') {
-                args = new ArrayList<>();
+                args = new ArrayList<String>();
                 ARGS:
-                while (true) {
+                for (;;) {
                     switch (tok.getType()) {
                         case IDENTIFIER:
                             args.add(tok.getText());
@@ -730,29 +955,28 @@ public class Preprocessor {
                             args.add("__VA_ARGS__");
                             // We just named the ellipsis, but we unget the token
                             // to allow the ELLIPSIS handling below to process it.
-                            this.source_untoken(tok);
+                            source_untoken(tok);
                             break;
                         case NL:
                         case EOF:
-                            this.error(tok,
+                            error(tok,
                                     "Unterminated macro parameter list");
                             return tok;
                         default:
-                            this.error(tok,
+                            error(tok,
                                     "error in macro parameters: "
-                                            + tok.getText());
-                            return this.source_skipline(false);
+                                    + tok.getText());
+                            return source_skipline(false);
                     }
-                    tok = this.source_token_nonwhite();
+                    tok = source_token_nonwhite();
                     switch (tok.getType()) {
                         case ',':
                             break;
                         case ELLIPSIS:
-                            tok = this.source_token_nonwhite();
-                            if (tok.getType() != ')') {
-                                this.error(tok,
+                            tok = source_token_nonwhite();
+                            if (tok.getType() != ')')
+                                error(tok,
                                         "ellipsis must be on last argument");
-                            }
                             m.setVariadic(true);
                             break ARGS;
                         case ')':
@@ -761,18 +985,19 @@ public class Preprocessor {
                         case NL:
                         case EOF:
                             /* Do not skip line. */
-                            this.error(tok,
+                            error(tok,
                                     "Unterminated macro parameters");
                             return tok;
                         default:
-                            this.error(tok,
+                            error(tok,
                                     "Bad token in macro parameters: "
-                                            + tok.getText());
-                            return this.source_skipline(false);
+                                    + tok.getText());
+                            return source_skipline(false);
                     }
-                    tok = this.source_token_nonwhite();
+                    tok = source_token_nonwhite();
                 }
             } else {
+                assert tok.getType() == ')' : "Expected ')'";
                 args = Collections.emptyList();
             }
 
@@ -780,7 +1005,7 @@ public class Preprocessor {
         } else {
             /* For searching. */
             args = Collections.emptyList();
-            this.source_untoken(tok);
+            source_untoken(tok);
         }
 
         /* Get an expansion for the macro, using indexOf. */
@@ -789,9 +1014,9 @@ public class Preprocessor {
         int idx;
 
         /* Ensure no space at start. */
-        tok = this.source_token_nonwhite();
+        tok = source_token_nonwhite();
         EXPANSION:
-        while (true) {
+        for (;;) {
             switch (tok.getType()) {
                 case EOF:
                     break EXPANSION;
@@ -800,12 +1025,11 @@ public class Preprocessor {
 
                 case CCOMMENT:
                 case CPPCOMMENT:
-                    /* XXX This is where we implement GNU's cpp -CC. */
-                    // break;
+                /* XXX This is where we implement GNU's cpp -CC. */
+                // break;
                 case WHITESPACE:
-                    if (!paste) {
+                    if (!paste)
                         space = true;
-                    }
                     break;
 
                 /* Paste. */
@@ -819,202 +1043,345 @@ public class Preprocessor {
 
                 /* Stringify. */
                 case '#':
-                    if (space) {
+                    if (space)
                         m.addToken(Token.space);
-                    }
                     space = false;
-                    Token la = this.source_token_nonwhite();
+                    Token la = source_token_nonwhite();
                     if (la.getType() == IDENTIFIER
                             && ((idx = args.indexOf(la.getText())) != -1)) {
                         m.addToken(new Token(M_STRING,
                                 la.getLine(), la.getColumn(),
                                 "#" + la.getText(),
-                                idx));
+                                Integer.valueOf(idx)));
                     } else {
                         m.addToken(tok);
                         /* Allow for special processing. */
-                        this.source_untoken(la);
+                        source_untoken(la);
                     }
                     break;
 
                 case IDENTIFIER:
-                    if (space) {
+                    if (space)
                         m.addToken(Token.space);
-                    }
                     space = false;
                     paste = false;
                     idx = args.indexOf(tok.getText());
-                    if (idx == -1) {
+                    if (idx == -1)
                         m.addToken(tok);
-                    } else {
+                    else
                         m.addToken(new Token(M_ARG,
                                 tok.getLine(), tok.getColumn(),
                                 tok.getText(),
-                                idx));
-                    }
+                                Integer.valueOf(idx)));
                     break;
 
                 default:
-                    if (space) {
+                    if (space)
                         m.addToken(Token.space);
-                    }
                     space = false;
                     paste = false;
                     m.addToken(tok);
                     break;
             }
-            tok = this.source_token();
+            tok = source_token();
         }
 
-        this.addMacro(m);
-        return tok;    /* NL or EOF. */
+        if (getFeature(Feature.DEBUG))
+            System.out.println("Defined macro " + m);
+        addMacro(m);
+
+        return tok;	/* NL or EOF. */
+
     }
 
-    @NotNull
-    private Token undef() throws LexerException {
-        Token tok = this.source_token_nonwhite();
+    @Nonnull
+    private Token undef()
+            throws IOException,
+            LexerException {
+        Token tok = source_token_nonwhite();
         if (tok.getType() != IDENTIFIER) {
-            this.error(tok,
+            error(tok,
                     "Expected identifier, not " + tok.getText());
-            if (tok.getType() == NL || tok.getType() == EOF) {
+            if (tok.getType() == NL || tok.getType() == EOF)
                 return tok;
-            }
         } else {
-            Macro m = this.getMacro(tok.getText());
+            Macro m = getMacro(tok.getText());
             if (m != null) {
                 /* XXX error if predefined */
-                this.macros.remove(m.getName());
+                macros.remove(m.getName());
             }
         }
-        return this.source_skipline(true);
+        return source_skipline(true);
     }
 
-    @NotNull
-    private Token include() throws IOException, LexerException {
-        LexerSource lexer = (LexerSource) this.source;
+    /**
+     * Attempts to include the given file.
+     *
+     * User code may override this method to implement a virtual
+     * file system.
+     *
+     * @param file The VirtualFile to attempt to include.
+     * @return true if the file was successfully included, false otherwise.
+     * @throws IOException if an I/O error occurs.
+     */
+    protected boolean include(@Nonnull VirtualFile file)
+            throws IOException {
+        // System.out.println("Try to include " + ((File)file).getAbsolutePath());
+        if (!file.isFile())
+            return false;
+        if (getFeature(Feature.DEBUG))
+            System.out.println("pp: including " + file);
+        includes.add(file);
+        push_source(file.getSource(), true);
+        return true;
+    }
+
+    /**
+     * Attempts to include a file from an include path, by name.
+     *
+     * @param path The list of virtual directories to search for the given name.
+     * @param name The name of the file to attempt to include.
+     * @return true if the file was successfully included, false otherwise.
+     * @throws IOException if an I/O error occurs.
+     */
+    protected boolean include(@Nonnull Iterable<String> path, @Nonnull String name)
+            throws IOException {
+        for (String dir : path) {
+            VirtualFile file = getFileSystem().getFile(dir, name);
+            if (include(file))
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Handles an include directive.
+     *
+     * @throws IOException if an I/O error occurs.
+     * @throws LexerException if the include fails, and the error handler is fatal.
+     */
+    private void include(
+            @CheckForNull String parent, int line,
+            @Nonnull String name, boolean quoted, boolean next)
+            throws IOException,
+            LexerException {
+        if (name.startsWith("/")) {
+            VirtualFile file = filesystem.getFile(name);
+            if (include(file))
+                return;
+            StringBuilder buf = new StringBuilder();
+            buf.append("File not found: ").append(name);
+            error(line, 0, buf.toString());
+            return;
+        }
+
+        VirtualFile pdir = null;
+        if (quoted) {
+            if (parent != null) {
+                VirtualFile pfile = filesystem.getFile(parent);
+                pdir = pfile.getParentFile();
+            }
+            if (pdir != null) {
+                VirtualFile ifile = pdir.getChildFile(name);
+                if (include(ifile))
+                    return;
+            }
+            if (include(quoteincludepath, name))
+                return;
+        } else {
+            int idx = name.indexOf('/');
+            if (idx != -1) {
+                String frameworkName = name.substring(0, idx);
+                String headerName = name.substring(idx + 1);
+                String headerPath = frameworkName + ".framework/Headers/" + headerName;
+                if (include(frameworkspath, headerPath))
+                    return;
+            }
+        }
+
+        if (include(sysincludepath, name))
+            return;
+
+        StringBuilder buf = new StringBuilder();
+        buf.append("File not found: ").append(name);
+        buf.append(" in");
+        if (quoted) {
+            buf.append(" .").append('(').append(pdir).append(')');
+            for (String dir : quoteincludepath)
+                buf.append(" ").append(dir);
+        }
+        for (String dir : sysincludepath)
+            buf.append(" ").append(dir);
+        error(line, 0, buf.toString());
+    }
+
+    @Nonnull
+    private Token include(boolean next)
+            throws IOException,
+            LexerException {
+        LexerSource lexer = (LexerSource) source;
         try {
             lexer.setInclude(true);
-            Token tok = this.token_nonwhite();
+            Token tok = token_nonwhite();
+
+            String name;
+            boolean quoted;
 
             if (tok.getType() == STRING) {
                 /* XXX Use the original text, not the value.
                  * Backslashes must not be treated as escapes here. */
+                StringBuilder buf = new StringBuilder((String) tok.getValue());
                 HEADER:
-                while (true) {
-                    tok = this.token_nonwhite();
+                for (;;) {
+                    tok = token_nonwhite();
                     switch (tok.getType()) {
                         case STRING:
+                            buf.append((String) tok.getValue());
                             break;
                         case NL:
                         case EOF:
                             break HEADER;
                         default:
-                            this.warning(tok,
+                            warning(tok,
                                     "Unexpected token on #" + "include line");
-                            return this.source_skipline(false);
+                            return source_skipline(false);
                     }
                 }
+                name = buf.toString();
+                quoted = true;
             } else if (tok.getType() == HEADER) {
-                tok = this.source_skipline(true);
+                name = (String) tok.getValue();
+                quoted = false;
+                tok = source_skipline(true);
             } else {
-                this.error(tok,
+                error(tok,
                         "Expected string or header, not " + tok.getText());
-                return switch (tok.getType()) {
-                    case NL, EOF -> tok;
-                    default ->
+                switch (tok.getType()) {
+                    case NL:
+                    case EOF:
+                        return tok;
+                    default:
                         /* Only if not a NL or EOF already. */
-                            this.source_skipline(false);
-                };
+                        return source_skipline(false);
+                }
             }
+
+            /* Do the inclusion. */
+            include(source.getPath(), tok.getLine(), name, quoted, next);
 
             /* 'tok' is the 'nl' after the include. We use it after the
              * #line directive. */
-            if (this.getFeature(Feature.LINEMARKERS)) {
-                return this.line_token(1, this.source.getName(), " 1");
-            }
+            if (getFeature(Feature.LINEMARKERS))
+                return line_token(1, source.getName(), " 1");
             return tok;
         } finally {
             lexer.setInclude(false);
         }
     }
 
-    protected void pragma(@NotNull Token name) throws LexerException {
-        if (this.getFeature(Feature.PRAGMA_ONCE)) {
+    protected void pragma_once(@Nonnull Token name)
+            throws IOException, LexerException {
+        Source s = this.source;
+        if (!onceseenpaths.add(s.getPath())) {
+            Token mark = pop_source(true);
+            // FixedTokenSource should never generate a linemarker on exit.
+            if (mark != null)
+                push_source(new FixedTokenSource(Arrays.asList(mark)), true);
+        }
+    }
+
+    protected void pragma(@Nonnull Token name, @Nonnull List<Token> value)
+            throws IOException,
+            LexerException {
+        if (getFeature(Feature.PRAGMA_ONCE)) {
             if ("once".equals(name.getText())) {
+                pragma_once(name);
                 return;
             }
         }
-        this.warning(name, "Unknown #" + "pragma: " + name.getText());
+        warning(name, "Unknown #" + "pragma: " + name.getText());
     }
 
-    @NotNull
-    private Token pragma() throws LexerException {
+    @Nonnull
+    private Token pragma()
+            throws IOException,
+            LexerException {
         Token name;
 
         NAME:
-        while (true) {
-            Token tok = this.source_token();
+        for (;;) {
+            Token tok = source_token();
             switch (tok.getType()) {
                 case EOF:
                     /* There ought to be a newline before EOF.
                      * At least, in any skipline context. */
                     /* XXX Are we sure about this? */
-                    this.warning(tok,
+                    warning(tok,
                             "End of file in #" + "pragma");
                     return tok;
                 case NL:
                     /* This may contain one or more newlines. */
-                    this.warning(tok,
+                    warning(tok,
                             "Empty #" + "pragma");
                     return tok;
                 case CCOMMENT:
                 case CPPCOMMENT:
                 case WHITESPACE:
-                    continue;
+                    continue NAME;
                 case IDENTIFIER:
                     name = tok;
                     break NAME;
                 default:
-                    this.warning(tok,
+                    warning(tok,
                             "Illegal #" + "pragma " + tok.getText());
-                    return this.source_skipline(false);
+                    return source_skipline(false);
             }
         }
 
         Token tok;
+        List<Token> value = new ArrayList<Token>();
         VALUE:
-        while (true) {
-            tok = this.source_token();
+        for (;;) {
+            tok = source_token();
             switch (tok.getType()) {
                 case EOF:
                     /* There ought to be a newline before EOF.
                      * At least, in any skipline context. */
                     /* XXX Are we sure about this? */
-                    this.warning(tok,
+                    warning(tok,
                             "End of file in #" + "pragma");
                     break VALUE;
                 case NL:
                     /* This may contain one or more newlines. */
                     break VALUE;
+                case CCOMMENT:
+                case CPPCOMMENT:
+                    break;
+                case WHITESPACE:
+                    value.add(tok);
+                    break;
                 default:
+                    value.add(tok);
                     break;
             }
         }
 
-        this.pragma(name);
+        pragma(name, value);
 
-        return tok;    /* The NL. */
+        return tok;	/* The NL. */
 
     }
 
     /* For #error and #warning. */
-    private void error(@NotNull Token pptok, boolean is_error) throws LexerException {
+    private void error(@Nonnull Token pptok, boolean is_error)
+            throws IOException,
+            LexerException {
         StringBuilder buf = new StringBuilder();
         buf.append('#').append(pptok.getText()).append(' ');
         /* Peculiar construction to ditch first whitespace. */
-        Token tok = this.source_token_nonwhite();
+        Token tok = source_token_nonwhite();
         ERROR:
-        while (true) {
+        for (;;) {
             switch (tok.getType()) {
                 case NL:
                 case EOF:
@@ -1023,87 +1390,83 @@ public class Preprocessor {
                     buf.append(tok.getText());
                     break;
             }
-            tok = this.source_token();
+            tok = source_token();
         }
-        if (is_error) {
-            this.error(pptok, buf.toString());
-        } else {
-            this.warning(pptok, buf.toString());
-        }
+        if (is_error)
+            error(pptok, buf.toString());
+        else
+            warning(pptok, buf.toString());
     }
 
     /* This bypasses token() for #elif expressions.
      * If we don't do this, then isActive() == false
      * causes token() to simply chew the entire input line. */
-    @NotNull
+    @Nonnull
     private Token expanded_token()
             throws IOException,
             LexerException {
-        while (true) {
-            Token tok = this.source_token();
+        for (;;) {
+            Token tok = source_token();
             // System.out.println("Source token is " + tok);
             if (tok.getType() == IDENTIFIER) {
-                Macro m = this.getMacro(tok.getText());
-                if (m == null) {
+                Macro m = getMacro(tok.getText());
+                if (m == null)
                     return tok;
-                }
-                if (this.source.isExpanding(m)) {
+                if (source.isExpanding(m))
                     return tok;
-                }
-                if (this.macro(m, tok)) {
+                if (macro(m, tok))
                     continue;
-                }
             }
             return tok;
         }
     }
 
-    @NotNull
+    @Nonnull
     private Token expanded_token_nonwhite()
             throws IOException,
             LexerException {
         Token tok;
         do {
-            tok = this.expanded_token();
+            tok = expanded_token();
             // System.out.println("expanded token is " + tok);
-        } while (this.isWhite(tok));
+        } while (isWhite(tok));
         return tok;
     }
 
-    @Nullable
+    @CheckForNull
     private Token expr_token = null;
 
-    @NotNull
+    @Nonnull
     private Token expr_token()
             throws IOException,
             LexerException {
-        Token tok = this.expr_token;
+        Token tok = expr_token;
 
         if (tok != null) {
             // System.out.println("ungetting");
-            this.expr_token = null;
+            expr_token = null;
         } else {
-            tok = this.expanded_token_nonwhite();
+            tok = expanded_token_nonwhite();
             // System.out.println("expt is " + tok);
 
             if (tok.getType() == IDENTIFIER
                     && tok.getText().equals("defined")) {
-                Token la = this.source_token_nonwhite();
+                Token la = source_token_nonwhite();
                 boolean paren = false;
                 if (la.getType() == '(') {
                     paren = true;
-                    la = this.source_token_nonwhite();
+                    la = source_token_nonwhite();
                 }
 
                 // System.out.println("Core token is " + la);
                 if (la.getType() != IDENTIFIER) {
-                    this.error(la,
+                    error(la,
                             "defined() needs identifier, not "
-                                    + la.getText());
+                            + la.getText());
                     tok = new Token(NUMBER,
                             la.getLine(), la.getColumn(),
                             "0", new NumericValue(10, "0"));
-                } else if (this.macros.containsKey(la.getText())) {
+                } else if (macros.containsKey(la.getText())) {
                     // System.out.println("Found macro");
                     tok = new Token(NUMBER,
                             la.getLine(), la.getColumn(),
@@ -1116,10 +1479,10 @@ public class Preprocessor {
                 }
 
                 if (paren) {
-                    la = this.source_token_nonwhite();
+                    la = source_token_nonwhite();
                     if (la.getType() != ')') {
-                        this.expr_untoken(la);
-                        this.error(la, "Missing ) in defined(). Got " + la.getText());
+                        expr_untoken(la);
+                        error(la, "Missing ) in defined(). Got " + la.getText());
                     }
                 }
             }
@@ -1129,39 +1492,68 @@ public class Preprocessor {
         return tok;
     }
 
-    private void expr_untoken(@NotNull Token tok) {
-        if (this.expr_token != null) {
-            throw new AssertionError("Cannot unget two expression tokens.");
-        }
-        this.expr_token = tok;
+    private void expr_untoken(@Nonnull Token tok)
+            throws LexerException {
+        if (expr_token != null)
+            throw new InternalException(
+                    "Cannot unget two expression tokens."
+            );
+        expr_token = tok;
     }
 
-    private int expr_priority(@NotNull Token op) {
-        return switch (op.getType()) {
-            case '/', '%', '*' -> 11;
-            case '+', '-' -> 10;
-            case LSH, RSH -> 9;
-            case '<', '>', LE, GE -> 8;
-            case EQ, NE -> 7;
-            case '&' -> 6;
-            case '^' -> 5;
-            case '|' -> 4;
-            case LAND -> 3;
-            case LOR -> 2;
-            case '?' -> 1;
-            default -> 0;
-        };
+    private int expr_priority(@Nonnull Token op) {
+        switch (op.getType()) {
+            case '/':
+                return 11;
+            case '%':
+                return 11;
+            case '*':
+                return 11;
+            case '+':
+                return 10;
+            case '-':
+                return 10;
+            case LSH:
+                return 9;
+            case RSH:
+                return 9;
+            case '<':
+                return 8;
+            case '>':
+                return 8;
+            case LE:
+                return 8;
+            case GE:
+                return 8;
+            case EQ:
+                return 7;
+            case NE:
+                return 7;
+            case '&':
+                return 6;
+            case '^':
+                return 5;
+            case '|':
+                return 4;
+            case LAND:
+                return 3;
+            case LOR:
+                return 2;
+            case '?':
+                return 1;
+            default:
+                // System.out.println("Unrecognised operator " + op);
+                return 0;
+        }
     }
 
     private int expr_char(Token token) {
         Object value = token.getValue();
-        if (value instanceof Character character) {
-            return character;
-        }
+        if (value instanceof Character)
+            return ((Character) value).charValue();
         String text = String.valueOf(value);
-        if (text.isBlank()) {
+        if (text.length() == 0)
             return 0;
-        }
         return text.charAt(0);
     }
 
@@ -1172,67 +1564,67 @@ public class Preprocessor {
          * (new Exception("expr(" + priority + ") called")).printStackTrace();
          */
 
-        Token tok = this.expr_token();
+        Token tok = expr_token();
         long lhs, rhs;
 
         // System.out.println("Expr lhs token is " + tok);
         switch (tok.getType()) {
             case '(':
-                lhs = this.expr(0);
-                tok = this.expr_token();
+                lhs = expr(0);
+                tok = expr_token();
                 if (tok.getType() != ')') {
-                    this.expr_untoken(tok);
-                    this.error(tok, "Missing ) in expression. Got " + tok.getText());
+                    expr_untoken(tok);
+                    error(tok, "Missing ) in expression. Got " + tok.getText());
                     return 0;
                 }
                 break;
 
             case '~':
-                lhs = ~this.expr(11);
+                lhs = ~expr(11);
                 break;
             case '!':
-                lhs = this.expr(11) == 0 ? 1 : 0;
+                lhs = expr(11) == 0 ? 1 : 0;
                 break;
             case '-':
-                lhs = -this.expr(11);
+                lhs = -expr(11);
                 break;
             case NUMBER:
                 NumericValue value = (NumericValue) tok.getValue();
                 lhs = value.longValue();
                 break;
             case CHARACTER:
-                lhs = this.expr_char(tok);
+                lhs = expr_char(tok);
                 break;
             case IDENTIFIER:
-                if (this.warnings.contains(Warning.UNDEF)) {
-                    this.warning(tok, "Undefined token '" + tok.getText()
+                if (warnings.contains(Warning.UNDEF))
+                    warning(tok, "Undefined token '" + tok.getText()
                             + "' encountered in conditional.");
-                }
                 lhs = 0;
                 break;
 
             default:
-                this.expr_untoken(tok);
-                this.error(tok,
+                expr_untoken(tok);
+                error(tok,
                         "Bad token in expression: " + tok.getText());
                 return 0;
         }
 
-        while (true) {
+        EXPR:
+        for (;;) {
             // System.out.println("expr: lhs is " + lhs + ", pri = " + priority);
-            Token op = this.expr_token();
-            int pri = this.expr_priority(op);    /* 0 if not a binop. */
+            Token op = expr_token();
+            int pri = expr_priority(op);	/* 0 if not a binop. */
 
             if (pri == 0 || priority >= pri) {
-                this.expr_untoken(op);
-                break;
+                expr_untoken(op);
+                break EXPR;
             }
-            rhs = this.expr(pri);
+            rhs = expr(pri);
             // System.out.println("rhs token is " + rhs);
             switch (op.getType()) {
                 case '/':
                     if (rhs == 0) {
-                        this.error(op, "Division by zero");
+                        error(op, "Division by zero");
                         lhs = 0;
                     } else {
                         lhs = lhs / rhs;
@@ -1240,7 +1632,7 @@ public class Preprocessor {
                     break;
                 case '%':
                     if (rhs == 0) {
-                        this.error(op, "Modulus by zero");
+                        error(op, "Modulus by zero");
                         lhs = 0;
                     } else {
                         lhs = lhs % rhs;
@@ -1297,19 +1689,19 @@ public class Preprocessor {
                     break;
 
                 case '?': {
-                    tok = this.expr_token();
+                    tok = expr_token();
                     if (tok.getType() != ':') {
-                        this.expr_untoken(tok);
-                        this.error(tok, "Missing : in conditional expression. Got " + tok.getText());
+                        expr_untoken(tok);
+                        error(tok, "Missing : in conditional expression. Got " + tok.getText());
                         return 0;
                     }
-                    long falseResult = this.expr(0);
+                    long falseResult = expr(0);
                     lhs = (lhs != 0) ? rhs : falseResult;
                 }
                 break;
 
                 default:
-                    this.error(op,
+                    error(op,
                             "Unexpected operator " + op.getText());
                     return 0;
 
@@ -1323,8 +1715,8 @@ public class Preprocessor {
         return lhs;
     }
 
-    @NotNull
-    private Token toWhitespace(@NotNull Token tok) {
+    @Nonnull
+    private Token toWhitespace(@Nonnull Token tok) {
         String text = tok.getText();
         int len = text.length();
         boolean cr = false;
@@ -1343,7 +1735,7 @@ public class Preprocessor {
                         cr = false;
                         break;
                     }
-                    /* fallthrough */
+                /* fallthrough */
                 case '\u2028':
                 case '\u2029':
                 case '\u000B':
@@ -1362,24 +1754,30 @@ public class Preprocessor {
                 new String(cbuf));
     }
 
-    @NotNull
+    @Nonnull
     private Token _token()
             throws IOException,
             LexerException {
 
-        while (true) {
+        for (;;) {
             Token tok;
-            if (this.isNotActive()) {
-                Source s = this.getSource();
+            if (!isActive()) {
+                Source s = getSource();
                 if (s == null) {
-                    Token t = this.next_source();
-                    if (t.getType() == P_LINE && !this.getFeature(Feature.LINEMARKERS)) {
+                    Token t = next_source();
+                    if (t.getType() == P_LINE && !getFeature(Feature.LINEMARKERS))
                         continue;
-                    }
                     return t;
                 }
 
-                tok = this.source_token();
+                try {
+                    /* XXX Tell lexer to ignore warnings. */
+                    s.setActive(false);
+                    tok = source_token();
+                } finally {
+                    /* XXX Tell lexer to stop ignoring warnings. */
+                    s.setActive(true);
+                }
                 switch (tok.getType()) {
                     case HASH:
                     case NL:
@@ -1391,23 +1789,20 @@ public class Preprocessor {
                     case CCOMMENT:
                     case CPPCOMMENT:
                         // Patch up to preserve whitespace.
-                        if (this.getFeature(Feature.KEEPALLCOMMENTS)) {
+                        if (getFeature(Feature.KEEPALLCOMMENTS))
                             return tok;
-                        }
-                        if (this.isNotActive()) {
-                            return this.toWhitespace(tok);
-                        }
-                        if (this.getFeature(Feature.KEEPCOMMENTS)) {
+                        if (!isActive())
+                            return toWhitespace(tok);
+                        if (getFeature(Feature.KEEPCOMMENTS))
                             return tok;
-                        }
-                        return this.toWhitespace(tok);
+                        return toWhitespace(tok);
                     default:
                         // Return NL to preserve whitespace.
-                        /* XXX This might lose a comment. */
-                        return this.source_skipline(false);
+						/* XXX This might lose a comment. */
+                        return source_skipline(false);
                 }
             } else {
-                tok = this.source_token();
+                tok = source_token();
             }
 
             LEX:
@@ -1449,12 +1844,12 @@ public class Preprocessor {
                 case '~':
                 case '.':
 
-                    /* From Olivier Chafik for Objective C? */
+                /* From Olivier Chafik for Objective C? */
                 case '@':
-                    /* The one remaining ASCII, might as well. */
+                /* The one remaining ASCII, might as well. */
                 case '`':
 
-                    // case '#':
+                // case '#':
                 case AND_EQ:
                 case ARROW:
                 case CHARACTER:
@@ -1463,7 +1858,7 @@ public class Preprocessor {
                 case ELLIPSIS:
                 case EQ:
                 case GE:
-                case HEADER:    /* Should only arise from include() */
+                case HEADER:	/* Should only arise from include() */
 
                 case INC:
                 case LAND:
@@ -1489,210 +1884,208 @@ public class Preprocessor {
                     return tok;
 
                 case IDENTIFIER:
-                    Macro m = this.getMacro(tok.getText());
-                    if (m == null) {
+                    Macro m = getMacro(tok.getText());
+                    if (m == null)
                         return tok;
-                    }
-                    if (this.source.isExpanding(m)) {
+                    if (source.isExpanding(m))
                         return tok;
-                    }
-                    if (this.macro(m, tok)) {
+                    if (macro(m, tok))
                         break;
-                    }
                     return tok;
 
                 case P_LINE:
-                    if (this.getFeature(Feature.LINEMARKERS)) {
+                    if (getFeature(Feature.LINEMARKERS))
                         return tok;
-                    }
                     break;
 
                 case INVALID:
-                    if (this.getFeature(Feature.CSYNTAX)) {
-                        this.error(tok, String.valueOf(tok.getValue()));
-                    }
+                    if (getFeature(Feature.CSYNTAX))
+                        error(tok, String.valueOf(tok.getValue()));
                     return tok;
 
                 default:
-                    throw new AssertionError("Bad token " + tok);
+                    throw new InternalException("Bad token " + tok);
+                // break;
 
                 case HASH:
-                    tok = this.source_token_nonwhite();
+                    tok = source_token_nonwhite();
+                    // (new Exception("here")).printStackTrace();
                     switch (tok.getType()) {
                         case NL:
-                            break LEX;    /* Some code has #\n */
+                            break LEX;	/* Some code has #\n */
 
                         case IDENTIFIER:
                             break;
                         default:
-                            this.error(tok, "Preprocessor directive not a word " + tok.getText());
-                            return this.source_skipline(false);
+                            error(tok,
+                                    "Preprocessor directive not a word "
+                                    + tok.getText());
+                            return source_skipline(false);
                     }
                     PreprocessorCommand ppcmd = PreprocessorCommand.forText(tok.getText());
                     if (ppcmd == null) {
-                        this.error(tok, "Unknown preprocessor directive " + tok.getText());
-                        return this.source_skipline(false);
+                        error(tok,
+                                "Unknown preprocessor directive "
+                                + tok.getText());
+                        return source_skipline(false);
                     }
 
+                    PP:
                     switch (ppcmd) {
+
                         case PP_DEFINE:
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
-                            } else {
-                                return this.define();
-                            }
-                            // break;
+                            if (!isActive())
+                                return source_skipline(false);
+                            else
+                                return define();
+                        // break;
 
                         case PP_UNDEF:
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
-                            } else {
-                                return this.undef();
-                            }
-                            // break;
+                            if (!isActive())
+                                return source_skipline(false);
+                            else
+                                return undef();
+                        // break;
 
                         case PP_INCLUDE:
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
-                            } else {
-                                return this.include();
-                            }
-                            // break;
+                            if (!isActive())
+                                return source_skipline(false);
+                            else
+                                return include(false);
+                        // break;
                         case PP_INCLUDE_NEXT:
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
-                            }
-                            if (!this.getFeature(Feature.INCLUDENEXT)) {
-                                this.error(tok,
+                            if (!isActive())
+                                return source_skipline(false);
+                            if (!getFeature(Feature.INCLUDENEXT)) {
+                                error(tok,
                                         "Directive include_next not enabled"
                                 );
-                                return this.source_skipline(false);
+                                return source_skipline(false);
                             }
-                            return this.include();
+                            return include(true);
                         // break;
 
                         case PP_WARNING:
                         case PP_ERROR:
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
-                            } else {
-                                this.error(tok, ppcmd == PP_ERROR);
-                            }
+                            if (!isActive())
+                                return source_skipline(false);
+                            else
+                                error(tok, ppcmd == PP_ERROR);
                             break;
 
                         case PP_IF:
-                            this.push_state();
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
+                            push_state();
+                            if (!isActive()) {
+                                return source_skipline(false);
                             }
-                            this.expr_token = null;
-                            this.states.peek().setActive(this.expr(0) != 0);
-                            tok = this.expr_token();    /* unget */
+                            expr_token = null;
+                            states.peek().setActive(expr(0) != 0);
+                            tok = expr_token();	/* unget */
 
-                            if (tok.getType() == NL) {
+                            if (tok.getType() == NL)
                                 return tok;
-                            }
-                            return this.source_skipline(true);
+                            return source_skipline(true);
                         // break;
 
                         case PP_ELIF:
-                            State state = this.states.peek();
-                            if (state.sawElse()) {
-                                this.error(tok,
+                            State state = states.peek();
+                            if (false) {
+                                /* Check for 'if' */;
+                            } else if (state.sawElse()) {
+                                error(tok,
                                         "#elif after #" + "else");
-                                return this.source_skipline(false);
+                                return source_skipline(false);
                             } else if (!state.isParentActive()) {
                                 /* Nested in skipped 'if' */
-                                return this.source_skipline(false);
+                                return source_skipline(false);
                             } else if (state.isActive()) {
                                 /* The 'if' part got executed. */
                                 state.setParentActive(false);
                                 /* This is like # else # if but with
                                  * only one # end. */
                                 state.setActive(false);
-                                return this.source_skipline(false);
+                                return source_skipline(false);
                             } else {
-                                this.expr_token = null;
-                                state.setActive(this.expr(0) != 0);
-                                tok = this.expr_token();    /* unget */
+                                expr_token = null;
+                                state.setActive(expr(0) != 0);
+                                tok = expr_token();	/* unget */
 
-                                if (tok.getType() == NL) {
+                                if (tok.getType() == NL)
                                     return tok;
-                                }
-                                return this.source_skipline(true);
+                                return source_skipline(true);
                             }
-                            // break;
+                        // break;
 
                         case PP_ELSE:
-                            state = this.states.peek();
-                            if (state.sawElse()) {
-                                this.error(tok,
+                            state = states.peek();
+                            if (false)
+								/* Check for 'if' */ ; else if (state.sawElse()) {
+                                error(tok,
                                         "#" + "else after #" + "else");
-                                return this.source_skipline(false);
+                                return source_skipline(false);
                             } else {
                                 state.setSawElse();
                                 state.setActive(!state.isActive());
-                                return this.source_skipline(this.warnings.contains(Warning.ENDIF_LABELS));
+                                return source_skipline(warnings.contains(Warning.ENDIF_LABELS));
                             }
-                            // break;
+                        // break;
 
                         case PP_IFDEF:
-                            this.push_state();
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
+                            push_state();
+                            if (!isActive()) {
+                                return source_skipline(false);
                             } else {
-                                tok = this.source_token_nonwhite();
+                                tok = source_token_nonwhite();
                                 // System.out.println("ifdef " + tok);
                                 if (tok.getType() != IDENTIFIER) {
-                                    this.error(tok,
+                                    error(tok,
                                             "Expected identifier, not "
-                                                    + tok.getText());
-                                    return this.source_skipline(false);
+                                            + tok.getText());
+                                    return source_skipline(false);
                                 } else {
                                     String text = tok.getText();
                                     boolean exists
-                                            = this.macros.containsKey(text);
-                                    this.states.peek().setActive(exists);
-                                    return this.source_skipline(true);
+                                            = macros.containsKey(text);
+                                    states.peek().setActive(exists);
+                                    return source_skipline(true);
                                 }
                             }
-                            // break;
+                        // break;
 
                         case PP_IFNDEF:
-                            this.push_state();
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
+                            push_state();
+                            if (!isActive()) {
+                                return source_skipline(false);
                             } else {
-                                tok = this.source_token_nonwhite();
+                                tok = source_token_nonwhite();
                                 if (tok.getType() != IDENTIFIER) {
-                                    this.error(tok,
+                                    error(tok,
                                             "Expected identifier, not "
-                                                    + tok.getText());
-                                    return this.source_skipline(false);
+                                            + tok.getText());
+                                    return source_skipline(false);
                                 } else {
                                     String text = tok.getText();
                                     boolean exists
-                                            = this.macros.containsKey(text);
-                                    this.states.peek().setActive(!exists);
-                                    return this.source_skipline(true);
+                                            = macros.containsKey(text);
+                                    states.peek().setActive(!exists);
+                                    return source_skipline(true);
                                 }
                             }
-                            // break;
+                        // break;
 
                         case PP_ENDIF:
-                            this.pop_state();
-                            return this.source_skipline(this.warnings.contains(Warning.ENDIF_LABELS));
+                            pop_state();
+                            return source_skipline(warnings.contains(Warning.ENDIF_LABELS));
                         // break;
 
                         case PP_LINE:
-                            return this.source_skipline(false);
+                            return source_skipline(false);
                         // break;
 
                         case PP_PRAGMA:
-                            if (this.isNotActive()) {
-                                return this.source_skipline(false);
-                            }
-                            return this.pragma();
+                            if (!isActive())
+                                return source_skipline(false);
+                            return pragma();
                         // break;
 
                         default:
@@ -1702,53 +2095,77 @@ public class Preprocessor {
                              * failed to handle it. Therefore,
                              * this is (unconditionally?) fatal. */
                             // if (isActive()) /* XXX Could be warning. */
-                            throw new AssertionError("Internal error: Unknown directive " + tok);
+                            throw new InternalException(
+                                    "Internal error: Unknown directive "
+                                    + tok);
+                        // return source_skipline(false);
                     }
 
             }
         }
     }
 
-    @NotNull
-    private Token token_nonwhite() throws IOException, LexerException {
+    @Nonnull
+    private Token token_nonwhite()
+            throws IOException,
+            LexerException {
         Token tok;
         do {
-            tok = this._token();
-        } while (this.isWhite(tok));
+            tok = _token();
+        } while (isWhite(tok));
         return tok;
     }
 
     /**
      * Returns the next preprocessor token.
      *
-     * @return The next fully preprocessed token.
-     * @throws IOException    if an I/O error occurs.
-     * @throws LexerException if a preprocessing error occurs.
-     * @throws AssertionError if an unexpected error condition arises.
      * @see Token
+     * @return The next fully preprocessed token.
+     * @throws IOException if an I/O error occurs.
+     * @throws LexerException if a preprocessing error occurs.
+     * @throws InternalException if an unexpected error condition arises.
      */
-    @NotNull
+    @Nonnull
     public Token token()
             throws IOException,
             LexerException {
-        return this._token();
+        Token tok = _token();
+        if (getFeature(Feature.DEBUG))
+            System.out.println("pp: Returning " + tok);
+        return tok;
     }
 
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
 
-        Source s = this.getSource();
+        Source s = getSource();
         while (s != null) {
-            buf.append(" -> ").append(s).append("\n");
+            buf.append(" -> ").append(String.valueOf(s)).append("\n");
             s = s.getParent();
         }
 
-        Map<String, Macro> macros = new TreeMap<>(this.getMacros());
+        Map<String, Macro> macros = new TreeMap<String, Macro>(getMacros());
         for (Macro macro : macros.values()) {
             buf.append("#").append("macro ").append(macro).append("\n");
         }
 
         return buf.toString();
     }
+
+    @Override
+    public void close()
+            throws IOException {
+        {
+            Source s = source;
+            while (s != null) {
+                s.close();
+                s = s.getParent();
+            }
+        }
+        for (Source s : inputs) {
+            s.close();
+        }
+    }
+
 }

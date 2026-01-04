@@ -14,36 +14,26 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
-
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-import static io.github.ocelot.glslprocessor.lib.anarres.cpp.Token.EOF;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+import static org.anarres.cpp.Token.EOF;
 
 /**
  * An Iterator for {@link Source Sources},
  * returning {@link Token Tokens}.
  */
-@ApiStatus.Internal
 public class SourceIterator implements Iterator<Token> {
 
     private final Source source;
     private Token tok;
 
-    public SourceIterator(@NotNull Source s) {
+    public SourceIterator(@Nonnull Source s) {
         this.source = s;
         this.tok = null;
     }
@@ -53,41 +43,39 @@ public class SourceIterator implements Iterator<Token> {
      */
     private void advance() {
         try {
-            if (this.tok == null) {
-                this.tok = this.source.token();
-            }
+            if (tok == null)
+                tok = source.token();
         } catch (LexerException e) {
+            throw new IllegalStateException(e);
+        } catch (IOException e) {
             throw new IllegalStateException(e);
         }
     }
 
     /**
      * Returns true if the enclosed Source has more tokens.
-     * <p>
-     * The EOF token is never returned by the iterator.
      *
+     * The EOF token is never returned by the iterator.
      * @throws IllegalStateException if the Source
-     *                               throws a LexerException or IOException
+     *		throws a LexerException or IOException
      */
     @Override
     public boolean hasNext() {
-        this.advance();
-        return this.tok.getType() != EOF;
+        advance();
+        return tok.getType() != EOF;
     }
 
     /**
      * Returns the next token from the enclosed Source.
-     * <p>
-     * The EOF token is never returned by the iterator.
      *
+     * The EOF token is never returned by the iterator.
      * @throws IllegalStateException if the Source
-     *                               throws a LexerException or IOException
+     *		throws a LexerException or IOException
      */
     @Override
     public Token next() {
-        if (!this.hasNext()) {
+        if (!hasNext())
             throw new NoSuchElementException();
-        }
         Token t = this.tok;
         this.tok = null;
         return t;

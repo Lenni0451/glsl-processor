@@ -14,56 +14,47 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
-
-import org.jetbrains.annotations.ApiStatus;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+/* pp */ class FixedTokenSource extends Source {
 
-@ApiStatus.Internal
-class FixedTokenSource extends Source {
-
-    private static final Token EOF = new Token(Token.EOF, "<ts-eof>");
+    private static final Token EOF
+            = new Token(Token.EOF, "<ts-eof>");
 
     private final List<Token> tokens;
     private int idx;
 
-    FixedTokenSource(Token... tokens) {
+    /* pp */ FixedTokenSource(Token... tokens) {
         this.tokens = Arrays.asList(tokens);
         this.idx = 0;
     }
 
-    FixedTokenSource(List<Token> tokens) {
+    /* pp */ FixedTokenSource(List<Token> tokens) {
         this.tokens = tokens;
         this.idx = 0;
     }
 
     @Override
-    public Token token() throws LexerException {
-        if (this.idx >= this.tokens.size()) {
+    public Token token()
+            throws IOException,
+            LexerException {
+        if (idx >= tokens.size())
             return EOF;
-        }
-        return this.tokens.get(this.idx++);
+        return tokens.get(idx++);
     }
 
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        buf.append("constant token stream ").append(this.tokens);
-        Source parent = this.getParent();
-        if (parent != null) {
-            buf.append(" in ").append(parent);
-        }
+        buf.append("constant token stream ").append(tokens);
+        Source parent = getParent();
+        if (parent != null)
+            buf.append(" in ").append(String.valueOf(parent));
         return buf.toString();
     }
 }

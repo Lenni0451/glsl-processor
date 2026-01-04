@@ -14,28 +14,33 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import java.io.IOException;
 
 /**
- * Warning classes which may optionally be emitted by the Preprocessor.
+ * An extremely lightweight virtual file interface.
  */
-@ApiStatus.Internal
-public enum Warning {
+public interface VirtualFile {
 
-    TRIGRAPHS,
-    IMPORT,
-    UNDEF,
-    UNUSED_MACROS,
-    ENDIF_LABELS,
-    ERROR
+    // public String getParent();
+    public boolean isFile();
+
+    @Nonnull
+    public String getPath();
+
+    @Nonnull
+    public String getName();
+
+    @CheckForNull
+    public VirtualFile getParentFile();
+
+    @Nonnull
+    public VirtualFile getChildFile(String name);
+
+    @Nonnull
+    public Source getSource() throws IOException;
 }

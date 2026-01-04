@@ -14,48 +14,38 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
-
-import org.jetbrains.annotations.ApiStatus;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
-
 /**
  * A macro object.
- * <p>
+ *
  * This encapsulates a name, an argument count, and a token stream
  * for replacement. The replacement token stream may contain the
  * extra tokens {@link Token#M_ARG} and {@link Token#M_STRING}.
  */
-@ApiStatus.Internal
 public class Macro {
 
     private Source source;
-    private final String name;
+    private String name;
     /* It's an explicit decision to keep these around here. We don't
      * need to; the argument token type is M_ARG and the value
      * is the index. The strings themselves are only used in
      * stringification of the macro, for debugging. */
     private List<String> args;
     private boolean variadic;
-    private final List<Token> tokens;
+    private List<Token> tokens;
 
     public Macro(Source source, String name) {
         this.source = source;
         this.name = name;
         this.args = null;
         this.variadic = false;
-        this.tokens = new ArrayList<>();
+        this.tokens = new ArrayList<Token>();
     }
 
     public Macro(String name) {
@@ -71,19 +61,19 @@ public class Macro {
 
     /**
      * Returns the Source from which this macro was parsed.
-     * <p>
+     *
      * This method may return null if the macro was not parsed
      * from a regular file.
      */
     public Source getSource() {
-        return this.source;
+        return source;
     }
 
     /**
      * Returns the name of this macro.
      */
     public String getName() {
-        return this.name;
+        return name;
     }
 
     /**
@@ -97,14 +87,14 @@ public class Macro {
      * Returns true if this is a function-like macro.
      */
     public boolean isFunctionLike() {
-        return this.args != null;
+        return args != null;
     }
 
     /**
      * Returns the number of arguments to this macro.
      */
     public int getArgs() {
-        return this.args.size();
+        return args.size();
     }
 
     /**
@@ -118,7 +108,7 @@ public class Macro {
      * Returns true if this is a variadic function-like macro.
      */
     public boolean isVariadic() {
-        return this.variadic;
+        return variadic;
     }
 
     /**
@@ -130,7 +120,7 @@ public class Macro {
 
     /**
      * Adds a "paste" operator to the expansion of this macro.
-     * <p>
+     *
      * A paste operator causes the next token added to be pasted
      * to the previous token when the macro is expanded.
      * It is an error for a macro to end with a paste token.
@@ -143,11 +133,11 @@ public class Macro {
          * tok0 ## tok1 ## tok2 ->
          *   M_PASTE, tok0, M_PASTE, tok1, tok2
          */
-        this.tokens.add(this.tokens.size() - 1, tok);
+        this.tokens.add(tokens.size() - 1, tok);
     }
 
-    List<Token> getTokens() {
-        return this.tokens;
+    /* pp */ List<Token> getTokens() {
+        return tokens;
     }
 
     /* Paste tokens are inserted before the first of the two pasted
@@ -157,9 +147,9 @@ public class Macro {
     public String getText() {
         StringBuilder buf = new StringBuilder();
         boolean paste = false;
-        for (Token tok : this.tokens) {
+        for (Token tok : tokens) {
             if (tok.getType() == Token.M_PASTE) {
-                assert !paste : "Two sequential pastes.";
+                assert paste == false : "Two sequential pastes.";
                 paste = true;
                 continue;
             } else {
@@ -169,29 +159,30 @@ public class Macro {
                 buf.append(" #" + "# ");
                 paste = false;
             }
+            // buf.append(tokens.get(i));
         }
         return buf.toString();
     }
 
     @Override
     public String toString() {
-        StringBuilder buf = new StringBuilder(this.name);
-        if (this.args != null) {
+        StringBuilder buf = new StringBuilder(name);
+        if (args != null) {
             buf.append('(');
-            Iterator<String> it = this.args.iterator();
+            Iterator<String> it = args.iterator();
             while (it.hasNext()) {
                 buf.append(it.next());
-                if (it.hasNext()) {
+                if (it.hasNext())
                     buf.append(", ");
-                } else if (this.isVariadic()) {
+                else if (isVariadic())
                     buf.append("...");
-                }
             }
             buf.append(')');
         }
-        if (!this.tokens.isEmpty()) {
-            buf.append(" => ").append(this.getText());
+        if (!tokens.isEmpty()) {
+            buf.append(" => ").append(getText());
         }
         return buf.toString();
     }
+
 }

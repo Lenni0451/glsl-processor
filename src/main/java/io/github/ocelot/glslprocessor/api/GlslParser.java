@@ -5,7 +5,7 @@ import io.github.ocelot.glslprocessor.api.node.GlslTree;
 import io.github.ocelot.glslprocessor.impl.GlslLexer;
 import io.github.ocelot.glslprocessor.impl.GlslParserImpl;
 import io.github.ocelot.glslprocessor.impl.GlslTokenReader;
-import io.github.ocelot.glslprocessor.lib.anarres.cpp.LexerException;
+import org.anarres.cpp.LexerException;
 
 import java.util.List;
 import java.util.Map;

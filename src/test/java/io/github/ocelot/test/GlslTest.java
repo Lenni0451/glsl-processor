@@ -7,7 +7,7 @@ import io.github.ocelot.glslprocessor.api.node.GlslNode;
 import io.github.ocelot.glslprocessor.api.node.GlslTree;
 import io.github.ocelot.glslprocessor.api.node.function.GlslFunctionNode;
 import io.github.ocelot.glslprocessor.api.visitor.GlslTreeStringWriter;
-import io.github.ocelot.glslprocessor.lib.anarres.cpp.LexerException;
+import org.anarres.cpp.LexerException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

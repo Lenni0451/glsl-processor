@@ -14,43 +14,35 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+import java.io.StringReader;
 
 /**
  * A Source for lexing a String.
- * <p>
+ *
  * This class is used by token pasting, but can be used by user
  * code.
  */
-@ApiStatus.Internal
 public class StringLexerSource extends LexerSource {
 
     /**
      * Creates a new Source for lexing the given String.
      *
-     * @param string  The input string to lex.
+     * @param string The input string to lex.
      * @param ppvalid true if preprocessor directives are to be
-     *                honoured within the string.
+     *	honoured within the string.
      */
     public StringLexerSource(String string, boolean ppvalid) {
-        super(string, ppvalid);
+        super(new StringReader(string), ppvalid);
     }
 
     /**
      * Creates a new Source for lexing the given String.
-     * <p>
+     *
      * Equivalent to calling <code>new StringLexerSource(string, false)</code>.
-     * <p>
+     *
      * By default, preprocessor directives are not honoured within
      * the string.
      *

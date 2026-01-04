@@ -14,31 +14,21 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
-
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
-
 /**
  * A macro argument.
- * <p>
+ *
  * This encapsulates a raw and preprocessed token stream.
  */
-@ApiStatus.Internal
-class Argument extends ArrayList<Token> {
+/* pp */ class Argument extends ArrayList<Token> {
 
     private List<Token> expansion;
 
@@ -46,39 +36,41 @@ class Argument extends ArrayList<Token> {
         this.expansion = null;
     }
 
-    public void addToken(@NotNull Token tok) {
-        this.add(tok);
+    public void addToken(@Nonnull Token tok) {
+        add(tok);
     }
 
-    void expand(@NotNull Preprocessor p) throws IOException, LexerException {
+    /* pp */ void expand(@Nonnull Preprocessor p)
+            throws IOException,
+            LexerException {
         /* Cache expansion. */
-        if (this.expansion == null) {
+        if (expansion == null) {
             this.expansion = p.expand(this);
+            // System.out.println("Expanded arg " + this);
         }
     }
 
-    @NotNull
+    @Nonnull
     public Iterator<Token> expansion() {
-        return this.expansion.iterator();
+        return expansion.iterator();
     }
 
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
         buf.append("Argument(");
+        // buf.append(super.toString());
         buf.append("raw=[ ");
-        for (Token value : this) {
-            buf.append(value.getText());
-        }
+        for (int i = 0; i < size(); i++)
+            buf.append(get(i).getText());
         buf.append(" ];expansion=[ ");
-        if (this.expansion == null) {
+        if (expansion == null)
             buf.append("null");
-        } else {
-            for (Token token : this.expansion) {
+        else
+            for (Token token : expansion)
                 buf.append(token.getText());
-            }
-        }
         buf.append(" ])");
         return buf.toString();
     }
+
 }

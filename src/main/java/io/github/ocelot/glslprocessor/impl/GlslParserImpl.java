@@ -16,7 +16,7 @@ import io.github.ocelot.glslprocessor.api.node.function.GlslFunctionNode;
 import io.github.ocelot.glslprocessor.api.node.function.GlslInvokeFunctionNode;
 import io.github.ocelot.glslprocessor.api.node.function.GlslPrimitiveConstructorNode;
 import io.github.ocelot.glslprocessor.api.node.variable.*;
-import io.github.ocelot.glslprocessor.lib.anarres.cpp.*;
+import org.anarres.cpp.*;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 

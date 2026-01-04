@@ -14,30 +14,29 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
+import javax.annotation.Nonnull;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.Reader;
 
-import java.util.Arrays;
+import static org.anarres.cpp.Token.*;
 
-import static io.github.ocelot.glslprocessor.lib.anarres.cpp.Token.*;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
-
-/**
- * Does not handle digraphs.
- */
-@ApiStatus.Internal
+/** Does not handle digraphs. */
 public class LexerSource extends Source {
 
-    private final JoinReader reader;
+    @Nonnull
+    protected static BufferedReader toBufferedReader(@Nonnull Reader r) {
+        if (r instanceof BufferedReader)
+            return (BufferedReader) r;
+        return new BufferedReader(r);
+    }
+
+    private static final boolean DEBUG = false;
+
+    private JoinReader reader;
     private final boolean ppvalid;
     private boolean bol;
     private boolean include;
@@ -56,8 +55,8 @@ public class LexerSource extends Source {
     /* ppvalid is:
      * false in StringLexerSource,
      * true in FileLexerSource */
-    public LexerSource(String input, boolean ppvalid) {
-        this.reader = new JoinReader(input);
+    public LexerSource(Reader r, boolean ppvalid) {
+        this.reader = new JoinReader(r);
         this.ppvalid = ppvalid;
         this.bol = true;
         this.include = false;
@@ -73,7 +72,7 @@ public class LexerSource extends Source {
     }
 
     @Override
-    void init(Preprocessor pp) {
+    /* pp */ void init(Preprocessor pp) {
         super.init(pp);
         this.digraphs = pp.getFeature(Feature.DIGRAPHS);
         this.reader.init(pp, this);
@@ -81,55 +80,65 @@ public class LexerSource extends Source {
 
     /**
      * Returns the line number of the last read character in this source.
-     * <p>
+     *
      * Lines are numbered from 1.
      *
      * @return the line number of the last read character in this source.
      */
     @Override
     public int getLine() {
-        return this.line;
+        return line;
     }
 
     /**
      * Returns the column number of the last read character in this source.
-     * <p>
+     *
      * Columns are numbered from 0.
      *
      * @return the column number of the last read character in this source.
      */
     @Override
     public int getColumn() {
-        return this.column;
+        return column;
     }
 
     @Override
-    boolean isNumbered() {
+    /* pp */ boolean isNumbered() {
         return true;
     }
 
     /* Error handling. */
-    private void _error(String msg) throws LexerException {
-        int _l = this.line;
-        int _c = this.column;
+    private void _error(String msg, boolean error)
+            throws LexerException {
+        int _l = line;
+        int _c = column;
         if (_c == 0) {
-            _c = this.lastcolumn;
+            _c = lastcolumn;
             _l--;
         } else {
             _c--;
         }
-        super.warning(_l, _c, msg);
+        if (error)
+            super.error(_l, _c, msg);
+        else
+            super.warning(_l, _c, msg);
     }
 
     /* Allow JoinReader to call this. */
-    /* pp */
-    final void warning(String msg) throws LexerException {
-        this._error(msg);
+    /* pp */ final void error(String msg)
+            throws LexerException {
+        _error(msg, true);
+    }
+
+    /* Allow JoinReader to call this. */
+    /* pp */ final void warning(String msg)
+            throws LexerException {
+        _error(msg, false);
     }
 
     /* A flag for string handling. */
 
-    void setInclude(boolean b) {
+    /* pp */ void setInclude(boolean b) {
         this.include = b;
     }
 
@@ -142,56 +151,71 @@ public class LexerSource extends Source {
 
     /* XXX Move to JoinReader and canonicalise newlines. */
     private static boolean isLineSeparator(int c) {
-        return switch ((char) c) {
-            case '\r', '\n', '\u2028', '\u2029', '\u000B', '\u000C', '\u0085' -> true;
-            default -> (c == -1);
-        };
-    }
-
-    private int read() throws LexerException {
-        int c;
-        assert this.ucount <= 2 : "Illegal ucount: " + this.ucount;
-        c = switch (this.ucount) {
-            case 2 -> {
-                this.ucount = 1;
-                yield this.u1;
-            }
-            case 1 -> {
-                this.ucount = 0;
-                yield this.u0;
-            }
-            default -> this.reader.read();
-        };
-
-        switch (c) {
+        switch ((char) c) {
             case '\r':
-                this.cr = true;
-                this.line++;
-                this.lastcolumn = this.column;
-                this.column = 0;
-                break;
             case '\n':
-                if (this.cr) {
-                    this.cr = false;
-                    break;
-                }
-                /* fallthrough */
             case '\u2028':
             case '\u2029':
             case '\u000B':
             case '\u000C':
             case '\u0085':
-                this.cr = false;
-                this.line++;
-                this.lastcolumn = this.column;
-                this.column = 0;
+                return true;
+            default:
+                return (c == -1);
+        }
+    }
+
+    private int read()
+            throws IOException,
+            LexerException {
+        int c;
+        assert ucount <= 2 : "Illegal ucount: " + ucount;
+        switch (ucount) {
+            case 2:
+                ucount = 1;
+                c = u1;
                 break;
-            case -1:
-                this.cr = false;
+            case 1:
+                ucount = 0;
+                c = u0;
                 break;
             default:
-                this.cr = false;
-                this.column++;
+                if (reader == null)
+                    c = -1;
+                else
+                    c = reader.read();
+                break;
+        }
+
+        switch (c) {
+            case '\r':
+                cr = true;
+                line++;
+                lastcolumn = column;
+                column = 0;
+                break;
+            case '\n':
+                if (cr) {
+                    cr = false;
+                    break;
+                }
+            /* fallthrough */
+            case '\u2028':
+            case '\u2029':
+            case '\u000B':
+            case '\u000C':
+            case '\u0085':
+                cr = false;
+                line++;
+                lastcolumn = column;
+                column = 0;
+                break;
+            case -1:
+                cr = false;
+                break;
+            default:
+                cr = false;
+                column++;
                 break;
         }
 
@@ -209,24 +233,25 @@ public class LexerSource extends Source {
     }
 
     /* You can unget AT MOST one newline. */
-    private void unread(int c) {
+    private void unread(int c)
+            throws IOException {
         /* XXX Must unread newlines. */
         if (c != -1) {
             if (isLineSeparator(c)) {
-                this.line--;
-                this.column = this.lastcolumn;
-                this.cr = false;
+                line--;
+                column = lastcolumn;
+                cr = false;
             } else {
-                this.column--;
+                column--;
             }
-            switch (this.ucount) {
+            switch (ucount) {
                 case 0:
-                    this.u0 = c;
-                    this.ucount = 1;
+                    u0 = c;
+                    ucount = 1;
                     break;
                 case 1:
-                    this.u1 = c;
-                    this.ucount = 2;
+                    u1 = c;
+                    ucount = 2;
                     break;
                 default:
                     throw new IllegalStateException(
@@ -237,40 +262,56 @@ public class LexerSource extends Source {
         }
     }
 
-    @NotNull
-    private Token ccomment() throws LexerException {
+    /* Consumes the rest of the current line into an invalid. */
+    @Nonnull
+    private Token invalid(StringBuilder text, String reason)
+            throws IOException,
+            LexerException {
+        int d = read();
+        while (!isLineSeparator(d)) {
+            text.append((char) d);
+            d = read();
+        }
+        unread(d);
+        return new Token(INVALID, text.toString(), reason);
+    }
+
+    @Nonnull
+    private Token ccomment()
+            throws IOException,
+            LexerException {
         StringBuilder text = new StringBuilder("/*");
         int d;
         do {
             do {
-                d = this.read();
-                if (d == -1) {
+                d = read();
+                if (d == -1)
                     return new Token(INVALID, text.toString(),
                             "Unterminated comment");
-                }
                 text.append((char) d);
             } while (d != '*');
             do {
-                d = this.read();
-                if (d == -1) {
+                d = read();
+                if (d == -1)
                     return new Token(INVALID, text.toString(),
                             "Unterminated comment");
-                }
                 text.append((char) d);
             } while (d == '*');
         } while (d != '/');
         return new Token(CCOMMENT, text.toString());
     }
 
-    @NotNull
-    private Token cppcomment() throws LexerException {
+    @Nonnull
+    private Token cppcomment()
+            throws IOException,
+            LexerException {
         StringBuilder text = new StringBuilder("//");
-        int d = this.read();
+        int d = read();
         while (!isLineSeparator(d)) {
             text.append((char) d);
-            d = this.read();
+            d = read();
         }
-        this.unread(d);
+        unread(d);
         return new Token(CPPCOMMENT, text.toString());
     }
 
@@ -279,10 +320,13 @@ public class LexerSource extends Source {
      *
      * @param text The buffer to which the literal escape sequence is appended.
      * @return The new parsed character value.
+     * @throws IOException if it goes badly wrong.
      * @throws LexerException if it goes wrong.
      */
-    private int escape(StringBuilder text) throws LexerException {
-        int d = this.read();
+    private int escape(StringBuilder text)
+            throws IOException,
+            LexerException {
+        int d = read();
         switch (d) {
             case 'a':
                 text.append('a');
@@ -322,9 +366,9 @@ public class LexerSource extends Source {
                 do {
                     val = (val << 3) + Character.digit(d, 8);
                     text.append((char) d);
-                    d = this.read();
+                    d = read();
                 } while (++len < 3 && Character.digit(d, 8) != -1);
-                this.unread(d);
+                unread(d);
                 return val;
 
             case 'x':
@@ -332,9 +376,9 @@ public class LexerSource extends Source {
                 len = 0;
                 val = 0;
                 while (len++ < 2) {
-                    d = this.read();
+                    d = read();
                     if (Character.digit(d, 16) == -1) {
-                        this.unread(d);
+                        unread(d);
                         break;
                     }
                     val = (val << 4) + Character.digit(d, 16);
@@ -351,36 +395,85 @@ public class LexerSource extends Source {
                 return '\'';
 
             default:
-                this.warning("Unnecessary escape character " + (char) d);
+                warning("Unnecessary escape character " + (char) d);
                 text.append((char) d);
                 return d;
         }
     }
 
-    @NotNull
-    private Token string(char open, char close) throws LexerException {
+    @Nonnull
+    private Token character()
+            throws IOException,
+            LexerException {
+        StringBuilder text = new StringBuilder("'");
+        int d = read();
+        if (d == '\\') {
+            text.append('\\');
+            d = escape(text);
+        } else if (isLineSeparator(d)) {
+            unread(d);
+            return new Token(INVALID, text.toString(),
+                    "Unterminated character literal");
+        } else if (d == '\'') {
+            text.append('\'');
+            return new Token(INVALID, text.toString(),
+                    "Empty character literal");
+        } else if (!Character.isDefined(d)) {
+            text.append('?');
+            return invalid(text, "Illegal unicode character literal");
+        } else {
+            text.append((char) d);
+        }
+
+        int e = read();
+        if (e != '\'') {
+            // error("Illegal character constant");
+            /* We consume up to the next ' or the rest of the line. */
+            for (;;) {
+                if (isLineSeparator(e)) {
+                    unread(e);
+                    break;
+                }
+                text.append((char) e);
+                if (e == '\'')
+                    break;
+                e = read();
+            }
+            return new Token(INVALID, text.toString(),
+                    "Illegal character constant " + text);
+        }
+        text.append('\'');
+        /* XXX It this a bad cast? */
+        return new Token(CHARACTER,
+                text.toString(), Character.valueOf((char) d));
+    }
+
+    @Nonnull
+    private Token string(char open, char close)
+            throws IOException,
+            LexerException {
         StringBuilder text = new StringBuilder();
         text.append(open);
 
         StringBuilder buf = new StringBuilder();
 
-        while (true) {
-            int c = this.read();
+        for (;;) {
+            int c = read();
             if (c == close) {
                 break;
             } else if (c == '\\') {
                 text.append('\\');
-                if (!this.include) {
-                    char d = (char) this.escape(text);
+                if (!include) {
+                    char d = (char) escape(text);
                     buf.append(d);
                 }
             } else if (c == -1) {
-                this.unread(c);
+                unread(c);
                 // error("End of file in string literal after " + buf);
                 return new Token(INVALID, text.toString(),
                         "End of file in string literal after " + buf);
             } else if (isLineSeparator(c)) {
-                this.unread(c);
+                unread(c);
                 // error("Unterminated string literal after " + buf);
                 return new Token(INVALID, text.toString(),
                         "Unterminated string literal after " + buf);
@@ -390,77 +483,81 @@ public class LexerSource extends Source {
             }
         }
         text.append(close);
-        return switch (close) {
-            case '"' -> new Token(STRING, text.toString(), buf.toString());
-            case '>' -> new Token(HEADER, text.toString(), buf.toString());
-            case '\'' -> {
-                if (buf.length() == 1) {
-                    yield new Token(CHARACTER, text.toString(), buf.toString());
-                }
-                yield new Token(SQSTRING, text.toString(), buf.toString());
-            }
-            default -> throw new IllegalStateException("Unknown closing character " + close);
-        };
+        switch (close) {
+            case '"':
+                return new Token(STRING,
+                        text.toString(), buf.toString());
+            case '>':
+                return new Token(HEADER,
+                        text.toString(), buf.toString());
+            case '\'':
+                if (buf.length() == 1)
+                    return new Token(CHARACTER,
+                            text.toString(), buf.toString());
+                return new Token(SQSTRING,
+                        text.toString(), buf.toString());
+            default:
+                throw new IllegalStateException(
+                        "Unknown closing character " + String.valueOf(close));
+        }
     }
 
-    @NotNull
-    private Token _number_suffix(StringBuilder text, NumericValue value, int d) throws LexerException {
-        int flags = 0;    // U, I, L, LL, F, D, MSB
-        while (true) {
+    @Nonnull
+    private Token _number_suffix(StringBuilder text, NumericValue value, int d)
+            throws IOException,
+            LexerException {
+        int flags = 0;	// U, I, L, LL, F, D, MSB
+        for (;;) {
             if (d == 'U' || d == 'u') {
-                if ((flags & NumericValue.F_UNSIGNED) != 0) {
-                    this.warning("Duplicate unsigned suffix " + d);
-                }
+                if ((flags & NumericValue.F_UNSIGNED) != 0)
+                    warning("Duplicate unsigned suffix " + d);
                 flags |= NumericValue.F_UNSIGNED;
                 text.append((char) d);
-                d = this.read();
+                d = read();
             } else if (d == 'L' || d == 'l') {
-                if ((flags & NumericValue.FF_SIZE) != 0) {
-                    this.warning("Multiple length suffixes after " + text);
-                }
+                if ((flags & NumericValue.FF_SIZE) != 0)
+                    warning("Multiple length suffixes after " + text);
                 text.append((char) d);
-                int e = this.read();
-                if (e == d) {    // Case must match. Ll is Welsh.
+                int e = read();
+                if (e == d) {	// Case must match. Ll is Welsh.
                     flags |= NumericValue.F_LONGLONG;
                     text.append((char) e);
-                    d = this.read();
+                    d = read();
                 } else {
                     flags |= NumericValue.F_LONG;
                     d = e;
                 }
             } else if (d == 'I' || d == 'i') {
-                if ((flags & NumericValue.FF_SIZE) != 0) {
-                    this.warning("Multiple length suffixes after " + text);
-                }
+                if ((flags & NumericValue.FF_SIZE) != 0)
+                    warning("Multiple length suffixes after " + text);
                 flags |= NumericValue.F_INT;
                 text.append((char) d);
-                d = this.read();
+                d = read();
             } else if (d == 'F' || d == 'f') {
-                if ((flags & NumericValue.FF_SIZE) != 0) {
-                    this.warning("Multiple length suffixes after " + text);
-                }
+                if ((flags & NumericValue.FF_SIZE) != 0)
+                    warning("Multiple length suffixes after " + text);
                 flags |= NumericValue.F_FLOAT;
                 text.append((char) d);
-                d = this.read();
+                d = read();
             } else if (d == 'D' || d == 'd') {
-                if ((flags & NumericValue.FF_SIZE) != 0) {
-                    this.warning("Multiple length suffixes after " + text);
-                }
+                if ((flags & NumericValue.FF_SIZE) != 0)
+                    warning("Multiple length suffixes after " + text);
                 flags |= NumericValue.F_DOUBLE;
                 text.append((char) d);
-                d = this.read();
+                d = read();
             } else if (Character.isUnicodeIdentifierPart(d)) {
                 String reason = "Invalid suffix \"" + (char) d + "\" on numeric constant";
                 // We've encountered something initially identified as a number.
                 // Read in the rest of this token as an identifer but return it as an invalid.
                 while (Character.isUnicodeIdentifierPart(d)) {
                     text.append((char) d);
-                    d = this.read();
+                    d = read();
                 }
-                this.unread(d);
+                unread(d);
                 return new Token(INVALID, text.toString(), reason);
             } else {
-                this.unread(d);
+                unread(d);
+                value.setFlags(flags);
                 return new Token(NUMBER,
                         text.toString(), value);
             }
@@ -468,117 +565,117 @@ public class LexerSource extends Source {
     }
 
     /* Either a decimal part, or a hex exponent. */
-    @NotNull
-    private String _number_part(StringBuilder text, int base, boolean sign) throws LexerException {
+    @Nonnull
+    private String _number_part(StringBuilder text, int base, boolean sign)
+            throws IOException,
+            LexerException {
         StringBuilder part = new StringBuilder();
-        int d = this.read();
+        int d = read();
         if (sign && (d == '+' || d == '-')) {
             text.append((char) d);
             part.append((char) d);
-            d = this.read();
+            d = read();
         }
         while (Character.digit(d, base) != -1) {
             text.append((char) d);
             part.append((char) d);
-            d = this.read();
+            d = read();
         }
-        this.unread(d);
+        unread(d);
         return part.toString();
     }
 
     /* We do not know whether know the first digit is valid. */
-    @NotNull
-    private Token number_hex(char x) throws LexerException {
+    @Nonnull
+    private Token number_hex(char x)
+            throws IOException,
+            LexerException {
         StringBuilder text = new StringBuilder("0");
         text.append(x);
-        String integer = this._number_part(text, 16, false);
+        String integer = _number_part(text, 16, false);
         NumericValue value = new NumericValue(16, integer);
-        int d = this.read();
+        int d = read();
         if (d == '.') {
             text.append((char) d);
-            String fraction = this._number_part(text, 16, false);
+            String fraction = _number_part(text, 16, false);
             value.setFractionalPart(fraction);
-            d = this.read();
+            d = read();
         }
         if (d == 'P' || d == 'p') {
             text.append((char) d);
-            String exponent = this._number_part(text, 10, true);
+            String exponent = _number_part(text, 10, true);
             value.setExponent(2, exponent);
-            d = this.read();
+            d = read();
         }
         // XXX Make sure it's got enough parts
-        return this._number_suffix(text, value, d);
+        return _number_suffix(text, value, d);
     }
 
-    private static boolean is_octal(@NotNull String text) {
-        if (!text.startsWith("0")) {
+    private static boolean is_octal(@Nonnull String text) {
+        if (!text.startsWith("0"))
             return false;
-        }
-        for (int i = 0; i < text.length(); i++) {
-            if (Character.digit(text.charAt(i), 8) == -1) {
+        for (int i = 0; i < text.length(); i++)
+            if (Character.digit(text.charAt(i), 8) == -1)
                 return false;
-            }
-        }
         return true;
     }
 
     /* We know we have at least one valid digit, but empty is not
      * fine. */
-    @NotNull
-    private Token number_decimal() throws LexerException {
+    @Nonnull
+    private Token number_decimal()
+            throws IOException,
+            LexerException {
         StringBuilder text = new StringBuilder();
-        String integer = this._number_part(text, 10, false);
+        String integer = _number_part(text, 10, false);
         String fraction = null;
         String exponent = null;
-        int d = this.read();
+        int d = read();
         if (d == '.') {
             text.append((char) d);
-            fraction = this._number_part(text, 10, false);
-            d = this.read();
+            fraction = _number_part(text, 10, false);
+            d = read();
         }
         if (d == 'E' || d == 'e') {
             text.append((char) d);
-            exponent = this._number_part(text, 10, true);
-            d = this.read();
+            exponent = _number_part(text, 10, true);
+            d = read();
         }
         int base = 10;
         if (fraction == null && exponent == null && integer.startsWith("0")) {
-            if (!is_octal(integer)) {
-                this.warning("Decimal constant starts with 0, but not octal: " + integer);
-            } else {
+            if (!is_octal(integer))
+                warning("Decimal constant starts with 0, but not octal: " + integer);
+            else
                 base = 8;
-            }
         }
         NumericValue value = new NumericValue(base, integer);
-        if (fraction != null) {
+        if (fraction != null)
             value.setFractionalPart(fraction);
-        }
-        if (exponent != null) {
+        if (exponent != null)
             value.setExponent(10, exponent);
-        }
         // XXX Make sure it's got enough parts
-        return this._number_suffix(text, value, d);
+        return _number_suffix(text, value, d);
     }
 
     /**
      * Section 6.4.4.1 of C99
-     * <p>
+     *
      * (Not pasted here, but says that the initial negation is a separate token.)
-     * <p>
+     *
      * Section 6.4.4.2 of C99
-     * <p>
+     *
      * A floating constant has a significand part that may be followed
      * by an exponent part and a suffix that specifies its type. The
      * components of the significand part may include a digit sequence
      * representing the whole-number part, followed by a period (.),
      * followed by a digit sequence representing the fraction part.
-     * <p>
+     *
      * The components of the exponent part are an e, E, p, or P
      * followed by an exponent consisting of an optionally signed digit
      * sequence. Either the whole-number part or the fraction part has to
      * be present; for decimal floating constants, either the period or
      * the exponent part has to be present.
-     * <p>
+     *
      * The significand part is interpreted as a (decimal or hexadecimal)
      * rational number; the digit sequence in the exponent part is
      * interpreted as a decimal integer. For decimal floating constants,
@@ -586,7 +683,7 @@ public class LexerSource extends Source {
      * part is to be scaled. For hexadecimal floating constants, the
      * exponent indicates the power of 2 by which the significand part is
      * to be scaled.
-     * <p>
+     *
      * For decimal floating constants, and also for hexadecimal
      * floating constants when FLT_RADIX is not a power of 2, the result
      * is either the nearest representable value, or the larger or smaller
@@ -595,321 +692,331 @@ public class LexerSource extends Source {
      * floating constants when FLT_RADIX is a power of 2, the result is
      * correctly rounded.
      */
-    @NotNull
-    private Token number() throws LexerException {
+    @Nonnull
+    private Token number()
+            throws IOException,
+            LexerException {
         Token tok;
-        int c = this.read();
+        int c = read();
         if (c == '0') {
-            int d = this.read();
+            int d = read();
             if (d == 'x' || d == 'X') {
-                tok = this.number_hex((char) d);
+                tok = number_hex((char) d);
             } else {
-                this.unread(d);
-                this.unread(c);
-                tok = this.number_decimal();
+                unread(d);
+                unread(c);
+                tok = number_decimal();
             }
         } else if (Character.isDigit(c) || c == '.') {
-            this.unread(c);
-            tok = this.number_decimal();
+            unread(c);
+            tok = number_decimal();
         } else {
             throw new LexerException("Asked to parse something as a number which isn't: " + (char) c);
         }
         return tok;
     }
 
-    @NotNull
-    private Token identifier(int c) throws LexerException {
+    @Nonnull
+    private Token identifier(int c)
+            throws IOException,
+            LexerException {
         StringBuilder text = new StringBuilder();
         int d;
         text.append((char) c);
-        while (true) {
-            d = this.read();
-            if (!Character.isIdentifierIgnorable(d)) {
-                if (Character.isJavaIdentifierPart(d)) {
-                    text.append((char) d);
-                } else {
-                    break;
-                }
-            }
+        for (;;) {
+            d = read();
+            if (Character.isIdentifierIgnorable(d))
+				; else if (Character.isJavaIdentifierPart(d))
+                text.append((char) d);
+            else
+                break;
         }
-        this.unread(d);
+        unread(d);
         return new Token(IDENTIFIER, text.toString());
     }
 
-    @NotNull
-    private Token whitespace(int c) throws LexerException {
+    @Nonnull
+    private Token whitespace(int c)
+            throws IOException,
+            LexerException {
         StringBuilder text = new StringBuilder();
         int d;
         text.append((char) c);
-        while (true) {
-            d = this.read();
-            if (this.ppvalid && isLineSeparator(d)) /* XXX Ugly. */ {
+        for (;;) {
+            d = read();
+            if (ppvalid && isLineSeparator(d)) /* XXX Ugly. */
                 break;
-            }
-            if (Character.isWhitespace(d)) {
+            if (Character.isWhitespace(d))
                 text.append((char) d);
-            } else {
+            else
                 break;
-            }
         }
-        this.unread(d);
+        unread(d);
         return new Token(WHITESPACE, text.toString());
     }
 
     /* No token processed by cond() contains a newline. */
-    @NotNull
-    private Token cond(char c, int yes, int no) throws LexerException {
-        int d = this.read();
-        if (c == d) {
+    @Nonnull
+    private Token cond(char c, int yes, int no)
+            throws IOException,
+            LexerException {
+        int d = read();
+        if (c == d)
             return new Token(yes);
-        }
-        this.unread(d);
+        unread(d);
         return new Token(no);
     }
 
     @Override
-    public Token token() throws LexerException {
+    public Token token()
+            throws IOException,
+            LexerException {
         Token tok = null;
 
-        int _l = this.line;
-        int _c = this.column;
+        int _l = line;
+        int _c = column;
 
-        int c = this.read();
+        int c = read();
         int d;
 
         switch (c) {
             case '\n':
-                if (this.ppvalid) {
-                    this.bol = true;
-                    if (this.include) {
+                if (ppvalid) {
+                    bol = true;
+                    if (include) {
                         tok = new Token(NL, _l, _c, "\n");
                     } else {
                         int nls = 0;
                         do {
                             nls++;
-                            d = this.read();
+                            d = read();
                         } while (d == '\n');
-                        this.unread(d);
+                        unread(d);
                         char[] text = new char[nls];
-                        Arrays.fill(text, '\n');
+                        for (int i = 0; i < text.length; i++)
+                            text[i] = '\n';
                         // Skip the bol = false below.
                         tok = new Token(NL, _l, _c, new String(text));
                     }
+                    if (DEBUG)
+                        System.out.println("lx: Returning NL: " + tok);
                     return tok;
                 }
                 /* Let it be handled as whitespace. */
                 break;
 
             case '!':
-                tok = this.cond('=', NE, '!');
+                tok = cond('=', NE, '!');
                 break;
 
             case '#':
-                if (this.bol) {
+                if (bol)
                     tok = new Token(HASH);
-                } else {
-                    tok = this.cond('#', PASTE, '#');
-                }
+                else
+                    tok = cond('#', PASTE, '#');
                 break;
 
             case '+':
-                d = this.read();
-                if (d == '+') {
+                d = read();
+                if (d == '+')
                     tok = new Token(INC);
-                } else if (d == '=') {
+                else if (d == '=')
                     tok = new Token(PLUS_EQ);
-                } else {
-                    this.unread(d);
-                }
+                else
+                    unread(d);
                 break;
             case '-':
-                d = this.read();
-                if (d == '-') {
+                d = read();
+                if (d == '-')
                     tok = new Token(DEC);
-                } else if (d == '=') {
+                else if (d == '=')
                     tok = new Token(SUB_EQ);
-                } else if (d == '>') {
+                else if (d == '>')
                     tok = new Token(ARROW);
-                } else {
-                    this.unread(d);
-                }
+                else
+                    unread(d);
                 break;
 
             case '*':
-                tok = this.cond('=', MULT_EQ, '*');
+                tok = cond('=', MULT_EQ, '*');
                 break;
             case '/':
-                d = this.read();
-                if (d == '*') {
-                    tok = this.ccomment();
-                } else if (d == '/') {
-                    tok = this.cppcomment();
-                } else if (d == '=') {
+                d = read();
+                if (d == '*')
+                    tok = ccomment();
+                else if (d == '/')
+                    tok = cppcomment();
+                else if (d == '=')
                     tok = new Token(DIV_EQ);
-                } else {
-                    this.unread(d);
-                }
+                else
+                    unread(d);
                 break;
 
             case '%':
-                d = this.read();
-                if (d == '=') {
+                d = read();
+                if (d == '=')
                     tok = new Token(MOD_EQ);
-                } else if (this.digraphs && d == '>') {
-                    tok = new Token('}');    // digraph
-                } else if (this.digraphs && d == ':') {
+                else if (digraphs && d == '>')
+                    tok = new Token('}');	// digraph
+                else if (digraphs && d == ':')
                     PASTE:
                     {
-                        d = this.read();
+                        d = read();
                         if (d != '%') {
-                            this.unread(d);
-                            tok = new Token('#');    // digraph
+                            unread(d);
+                            tok = new Token('#');	// digraph
                             break PASTE;
                         }
-                        d = this.read();
+                        d = read();
                         if (d != ':') {
-                            this.unread(d);    // Unread 2 chars here.
-                            this.unread('%');
-                            tok = new Token('#');    // digraph
+                            unread(d);	// Unread 2 chars here.
+                            unread('%');
+                            tok = new Token('#');	// digraph
                             break PASTE;
                         }
-                        tok = new Token(PASTE);    // digraph
+                        tok = new Token(PASTE);	// digraph
                     }
-                } else {
-                    this.unread(d);
-                }
+                else
+                    unread(d);
                 break;
 
             case ':':
                 /* :: */
-                d = this.read();
-                if (this.digraphs && d == '>') {
-                    tok = new Token(']');    // digraph
-                } else {
-                    this.unread(d);
-                }
+                d = read();
+                if (digraphs && d == '>')
+                    tok = new Token(']');	// digraph
+                else
+                    unread(d);
                 break;
 
             case '<':
-                if (this.include) {
-                    tok = this.string('<', '>');
+                if (include) {
+                    tok = string('<', '>');
                 } else {
-                    d = this.read();
-                    if (d == '=') {
+                    d = read();
+                    if (d == '=')
                         tok = new Token(LE);
-                    } else if (d == '<') {
-                        tok = this.cond('=', LSH_EQ, LSH);
-                    } else if (this.digraphs && d == ':') {
-                        tok = new Token('[');    // digraph
-                    } else if (this.digraphs && d == '%') {
-                        tok = new Token('{');    // digraph
-                    } else {
-                        this.unread(d);
-                    }
+                    else if (d == '<')
+                        tok = cond('=', LSH_EQ, LSH);
+                    else if (digraphs && d == ':')
+                        tok = new Token('[');	// digraph
+                    else if (digraphs && d == '%')
+                        tok = new Token('{');	// digraph
+                    else
+                        unread(d);
                 }
                 break;
 
             case '=':
-                tok = this.cond('=', EQ, '=');
+                tok = cond('=', EQ, '=');
                 break;
 
             case '>':
-                d = this.read();
-                if (d == '=') {
+                d = read();
+                if (d == '=')
                     tok = new Token(GE);
-                } else if (d == '>') {
-                    tok = this.cond('=', RSH_EQ, RSH);
-                } else {
-                    this.unread(d);
-                }
+                else if (d == '>')
+                    tok = cond('=', RSH_EQ, RSH);
+                else
+                    unread(d);
                 break;
 
             case '^':
-                tok = this.cond('=', XOR_EQ, '^');
+                tok = cond('=', XOR_EQ, '^');
                 break;
 
             case '|':
-                d = this.read();
-                if (d == '=') {
+                d = read();
+                if (d == '=')
                     tok = new Token(OR_EQ);
-                } else if (d == '|') {
-                    tok = this.cond('=', LOR_EQ, LOR);
-                } else {
-                    this.unread(d);
-                }
+                else if (d == '|')
+                    tok = cond('=', LOR_EQ, LOR);
+                else
+                    unread(d);
                 break;
             case '&':
-                d = this.read();
-                if (d == '&') {
-                    tok = this.cond('=', LAND_EQ, LAND);
-                } else if (d == '=') {
+                d = read();
+                if (d == '&')
+                    tok = cond('=', LAND_EQ, LAND);
+                else if (d == '=')
                     tok = new Token(AND_EQ);
-                } else {
-                    this.unread(d);
-                }
+                else
+                    unread(d);
                 break;
 
             case '.':
-                d = this.read();
-                if (d == '.') {
-                    tok = this.cond('.', ELLIPSIS, RANGE);
-                } else {
-                    this.unread(d);
-                }
+                d = read();
+                if (d == '.')
+                    tok = cond('.', ELLIPSIS, RANGE);
+                else
+                    unread(d);
                 if (Character.isDigit(d)) {
-                    this.unread('.');
-                    tok = this.number();
+                    unread('.');
+                    tok = number();
                 }
                 /* XXX decimal fraction */
                 break;
 
             case '\'':
-                tok = this.string('\'', '\'');
+                tok = string('\'', '\'');
                 break;
 
             case '"':
-                tok = this.string('"', '"');
+                tok = string('"', '"');
                 break;
 
             case -1:
+                close();
                 tok = new Token(EOF, _l, _c, "<eof>");
                 break;
         }
 
         if (tok == null) {
             if (Character.isWhitespace(c)) {
-                tok = this.whitespace(c);
+                tok = whitespace(c);
             } else if (Character.isDigit(c)) {
-                this.unread(c);
-                tok = this.number();
+                unread(c);
+                tok = number();
             } else if (Character.isJavaIdentifierStart(c)) {
-                tok = this.identifier(c);
+                tok = identifier(c);
             } else {
                 String text = TokenType.getTokenText(c);
                 if (text == null) {
                     if ((c >>> 16) == 0)    // Character.isBmpCodePoint() is new in 1.7
-                    {
                         text = Character.toString((char) c);
-                    } else {
+                    else
                         text = new String(Character.toChars(c));
-                    }
                 }
                 tok = new Token(c, text);
             }
         }
 
-        if (this.bol) {
+        if (bol) {
             switch (tok.getType()) {
                 case WHITESPACE:
                 case CCOMMENT:
                     break;
                 default:
-                    this.bol = false;
+                    bol = false;
                     break;
             }
         }
 
         tok.setLocation(_l, _c);
+        if (DEBUG)
+            System.out.println("lx: Returning " + tok);
+        // (new Exception("here")).printStackTrace(System.out);
         return tok;
     }
+
+    @Override
+    public void close()
+            throws IOException {
+        if (reader != null) {
+            reader.close();
+            reader = null;
+        }
+        super.close();
+    }
+
 }

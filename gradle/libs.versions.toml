@@ -1,6 +1,7 @@
 [versions]
 
 [libraries]
+findbugs = { module = "com.google.code.findbugs:jsr305", version = "3.0.2" }
 jetbrainsAnnotations = { module = "org.jetbrains:annotations", version = "26.0.2" }
 lombok = { module = "org.projectlombok:lombok", version = "1.18.38" }
 guava = { module = "com.google.guava:guava", version = "33.5.0-jre" }

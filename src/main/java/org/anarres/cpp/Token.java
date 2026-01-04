@@ -14,25 +14,16 @@
  * or implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.github.ocelot.glslprocessor.lib.anarres.cpp;
+// Based on https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
+package org.anarres.cpp;
 
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
-
-/*
- * NOTE: This File was edited by the Veil Team based on this commit: https://github.com/shevek/jcpp/commit/5e50e75ec33f5b4567cabfd60b6baca39524a8b7
- *
- * - Updated formatting to more closely follow project standards
- * - Removed all file/IO
- * - Fixed minor errors
- */
+import javax.annotation.Nonnull;
 
 /**
  * A Preprocessor token.
  *
  * @see Preprocessor
  */
-@ApiStatus.Internal
 public final class Token {
 
     // public static final int	EOF        = -1;
@@ -43,7 +34,7 @@ public final class Token {
     private final String text;
 
     public Token(int type, int line, int column,
-                 String text, Object value) {
+            String text, Object value) {
         this.type = type;
         this.line = line;
         this.column = column;
@@ -55,15 +46,15 @@ public final class Token {
         this(type, line, column, text, null);
     }
 
-    Token(int type, String text, Object value) {
+    /* pp */ Token(int type, String text, Object value) {
         this(type, -1, -1, text, value);
     }
 
-    Token(int type, String text) {
+    /* pp */ Token(int type, String text) {
         this(type, text, null);
     }
 
-    Token(int type) {
+    /* pp */ Token(int type) {
         this(type, TokenType.getTokenText(type));
     }
 
@@ -74,56 +65,56 @@ public final class Token {
      * @see #getTokenName(int)
      */
     public int getType() {
-        return this.type;
+        return type;
     }
 
-    void setLocation(int line, int column) {
+    /* pp */ void setLocation(int line, int column) {
         this.line = line;
         this.column = column;
     }
 
     /**
      * Returns the line at which this token started.
-     * <p>
+     *
      * Lines are numbered from 1.
      *
      * @return the line at which this token started.
      * @see LexerSource#getLine()
      */
-    // Not  - might not have been assigned?
+    // Not @Nonnegative - might not have been assigned?
     public int getLine() {
-        return this.line;
+        return line;
     }
 
     /**
      * Returns the column at which this token started.
-     * <p>
+     *
      * Columns are numbered from 0.
      *
      * @return the column at which this token started.
      * @see LexerSource#getColumn()
      */
-    // Not  - might not have been assigned?
+    // Not @Nonnegative - might not have been assigned?
     public int getColumn() {
-        return this.column;
+        return column;
     }
 
     /**
      * Returns the original or generated text of this token.
-     * <p>
+     *
      * This is distinct from the semantic value of the token.
      *
      * @return the original or generated text of this token.
      * @see #getValue()
      */
-    // Not @NotNull - might not have been assigned?
+    // Not @Nonnull - might not have been assigned?
     public String getText() {
-        return this.text;
+        return text;
     }
 
     /**
      * Returns the semantic value of this token.
-     * <p>
+     *
      * For strings, this is the parsed String.
      * For integers, this is an Integer object.
      * For other token types, as appropriate.
@@ -131,9 +122,9 @@ public final class Token {
      * @return the semantic value of this token, or null.
      * @see #getText()
      */
-    // @Nullable    // Not useful to annotate, as we have usually checked the type before calling this.
+    // @CheckForNull    // Not useful to annotate, as we have usually checked the type before calling this.
     public Object getValue() {
-        return this.value;
+        return value;
     }
 
     /**
@@ -143,37 +134,34 @@ public final class Token {
     public String toString() {
         StringBuilder buf = new StringBuilder();
 
-        buf.append('[').append(getTokenName(this.type));
-        if (this.line != -1) {
-            buf.append('@').append(this.line);
-            if (this.column != -1) {
-                buf.append(',').append(this.column);
-            }
+        buf.append('[').append(getTokenName(type));
+        if (line != -1) {
+            buf.append('@').append(line);
+            if (column != -1)
+                buf.append(',').append(column);
         }
         buf.append("]:");
-        if (this.text != null) {
-            buf.append('"').append(this.text).append('"');
-        } else if (this.type > 3 && this.type < 256) {
-            buf.append((char) this.type);
-        } else {
-            buf.append('<').append(this.type).append('>');
-        }
-        if (this.value != null) {
-            buf.append('=').append(this.value);
-        }
+        if (text != null)
+            buf.append('"').append(text).append('"');
+        else if (type > 3 && type < 256)
+            buf.append((char) type);
+        else
+            buf.append('<').append(type).append('>');
+        if (value != null)
+            buf.append('=').append(value);
         return buf.toString();
     }
 
     /**
      * Returns the descriptive name of the given token type.
-     * <p>
+     *
      * This is mostly used for stringification and debugging.
      *
      * @param type The type constant from this class to name.
      * @return the descriptive name of the given token type.
      * @see Token#getType()
      */
-    @NotNull
+    @Nonnull
     public static String getTokenName(int type) {
         return TokenType.getTokenName(type);
     }
@@ -223,8 +211,6 @@ public final class Token {
     public static final int P_LINE = 299;
     public static final int INVALID = 300;
 
-    /**
-     * The position-less space token.
-     */
-    static final Token space = new Token(WHITESPACE, -1, -1, " ");
+    /** The position-less space token. */
+    /* pp */ static final Token space = new Token(WHITESPACE, -1, -1, " ");
 }
